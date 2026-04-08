@@ -28,7 +28,7 @@ const STATUS_META = {
 };
 const $ = (id) => document.getElementById(id);
 let users = loadJSON(STORAGE_KEYS.users, []);
-let currentUser = loadJSON(STORAGE_KEYS.current, null);
+let currentUser = null;
 let inquiries = loadInquiries();
 let currentStep = 1;
 let trendChart;
@@ -41,7 +41,7 @@ function loadJSON(key, fallback) {
   catch { return fallback; }
 }
 function saveUsers() { localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users)); }
-function saveSession(user) { currentUser = user; localStorage.setItem(STORAGE_KEYS.current, JSON.stringify(user)); }
+function saveSession(user) { currentUser = user; }
 function clearSession() { currentUser = null; localStorage.removeItem(STORAGE_KEYS.current); }
 function saveInquiries() { localStorage.setItem(STORAGE_KEYS.inquiries, JSON.stringify(inquiries)); }
 function escapeHTML(value) { const div = document.createElement('div'); div.textContent = value == null ? '' : String(value); return div.innerHTML; }
@@ -100,17 +100,15 @@ function showToast(message, background) {
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3500);
 }
-function openAuth() { $('authOverlay').classList.add('open'); document.body.style.overflow = 'hidden'; }
-function closeAuth() { $('authOverlay').classList.remove('open'); document.body.style.overflow = ''; }
+function openAuth() { window.location.href = 'login.php'; }
+function closeAuth() {}
 function closeMobile() { $('mobileMenu').classList.remove('open'); }
 function clearFormErrors() { ['loginError', 'regError'].forEach((id) => { const el = $(id); if (el) { el.textContent = ''; el.style.display = 'none'; } }); }
 function showError(id, message) { const el = $(id); if (el) { el.textContent = message; el.style.display = 'block'; } }
 function updateAuthNote() {
   const note = $('wizardAuthNote');
   if (!note) return;
-  note.textContent = currentUser && currentUser.role === 'customer'
-    ? 'Signed in. Your account details will be used to save this inquiry on this device.'
-    : 'Sign in with your 9 Waves account before sending this inquiry.';
+  note.textContent = 'Sign in through the login page before sending this inquiry.';
 }
 /**
  * Updates navigation based on login state.
@@ -119,41 +117,7 @@ function updateAuthNote() {
  * Key: Generates user dropdown with dashboard access.
  */
 function updateNav() {
-  const area = $('navAuthArea');
-  const mobileLink = $('mobileAuthLink');
-  if (!currentUser) {
-    area.innerHTML = '<button class="nav-cta" onclick="openAuth()">Sign In</button>';
-    mobileLink.textContent = 'Sign In';
-    mobileLink.onclick = () => { openAuth(); closeMobile(); };
-    return;
-  }
-  const dashLabel = currentUser.role === 'admin' ? 'Admin Dashboard' : 'My Account';
-  area.innerHTML = `
-    <div class="nav-user">
-      <div class="nav-user-btn" id="dropBtn">
-        <div class="nav-avatar">${escapeHTML(currentUser.name.charAt(0).toUpperCase())}</div>
-        <span class="nav-user-name">${escapeHTML(currentUser.name.split(' ')[0])}</span>
-        <span class="nav-chevron">v</span>
-      </div>
-      <div class="user-dropdown" id="dropMenu">
-        <div class="dropdown-header">
-          <div class="dropdown-name">${escapeHTML(currentUser.name)}</div>
-          <div class="dropdown-role">${currentUser.role === 'admin' ? 'Admin' : 'Customer'}</div>
-        </div>
-        <button class="dropdown-item" id="openDashBtn">${dashLabel}</button>
-        <hr class="dropdown-divider">
-        <button class="dropdown-item danger" onclick="signOut()">Sign Out</button>
-      </div>
-    </div>`;
-  mobileLink.textContent = dashLabel;
-  mobileLink.onclick = () => { currentUser.role === 'admin' ? openAdminPanel() : openCustomerPanel(); closeMobile(); };
-  const dashBtn = $('openDashBtn');
-  if (dashBtn) dashBtn.onclick = () => currentUser.role === 'admin' ? openAdminPanel() : openCustomerPanel();
-  const dropBtn = $('dropBtn');
-  const dropMenu = $('dropMenu');
-  if (dropBtn && dropMenu) {
-    dropBtn.onclick = (event) => { event.stopPropagation(); dropBtn.classList.toggle('open'); dropMenu.classList.toggle('open'); };
-  }
+  return;
 }
 document.addEventListener('click', (event) => {
   const dropBtn = $('dropBtn');
@@ -169,45 +133,21 @@ document.addEventListener('click', (event) => {
  * Call from nav dropdown after admin login.
  */
 function openAdminPanel() {
-  if (!currentUser || currentUser.role !== 'admin') return;
-  $('adminGreet').textContent = currentUser.name.split(' ')[0];
-  $('adminDisplayName').textContent = currentUser.name;
-  refreshAdminUsers();
-  refreshAdminBookings();
-  initAdminCharts();
-  $('adminPanel').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  window.location.href = 'admin.php';
 }
 function openCustomerPanel() {
-  if (!currentUser || currentUser.role !== 'customer') return;
-  $('customerGreet').textContent = currentUser.name.split(' ')[0];
-  $('customerDisplayName').textContent = currentUser.name;
-  $('customerProfileInfo').innerHTML = `
-    <div class="profile-row"><span class="profile-label">Full Name</span><span class="profile-value">${escapeHTML(currentUser.name)}</span></div>
-    <div class="profile-row"><span class="profile-label">Email</span><span class="profile-value">${escapeHTML(currentUser.email)}</span></div>
-    <div class="profile-row"><span class="profile-label">Phone</span><span class="profile-value">${escapeHTML(currentUser.phone || 'Not provided')}</span></div>
-    <div class="profile-row"><span class="profile-label">Account Type</span><span class="profile-value">Customer</span></div>`;
-  renderCustomerInquiries();
-  $('customerPanel').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  window.location.href = 'account.php';
 }
 function closePanelGoTo(section) {
-  $('adminPanel').classList.remove('open');
-  $('customerPanel').classList.remove('open');
-  document.body.style.overflow = '';
   setTimeout(() => { const target = $(section); if (target) target.scrollIntoView({ behavior: 'smooth' }); }, 100);
 }
 function signOut() {
-  const name = currentUser ? currentUser.name.split(' ')[0] : '';
   clearSession();
-  updateNav();
-  $('adminPanel').classList.remove('open');
-  $('customerPanel').classList.remove('open');
-  document.body.style.overflow = '';
   updateAuthNote();
-  showToast(name ? `Signed out, ${name}.` : 'Signed out.');
+  window.location.href = 'index.php';
 }
 function refreshAdminUsers() {
+  if (!$('statUsers') || !$('adminUsersBody')) return;
   $('statUsers').textContent = users.length;
   const tbody = $('adminUsersBody');
   if (!users.length) {
@@ -230,6 +170,7 @@ function nextAdminAction(status) {
   return null;
 }
 function refreshAdminBookings() {
+  if (!$('statBookings') || !$('statPending') || !$('adminBookingsBody')) return;
   $('statBookings').textContent = inquiries.length;
   $('statPending').textContent = inquiries.filter((item) => item.status === 'review').length;
   const tbody = $('adminBookingsBody');
@@ -318,10 +259,10 @@ function renderCustomerInquiries() {
 function prefillInquiryContact() {
   if (!currentUser || currentUser.role !== 'customer') { updateAuthNote(); return; }
   const user = users.find((item) => item.email === currentUser.email);
-  $('wizFirst').value = user?.firstName || currentUser.name.split(' ')[0] || '';
-  $('wizLast').value = user?.lastName || currentUser.name.split(' ').slice(1).join(' ') || '';
-  $('wizEmail').value = currentUser.email || '';
-  $('wizPhone').value = user?.phone || currentUser.phone || '';
+  if ($('wizFirst')) $('wizFirst').value = user?.firstName || currentUser.name.split(' ')[0] || '';
+  if ($('wizLast')) $('wizLast').value = user?.lastName || currentUser.name.split(' ').slice(1).join(' ') || '';
+  if ($('wizEmail')) $('wizEmail').value = currentUser.email || '';
+  if ($('wizPhone')) $('wizPhone').value = user?.phone || currentUser.phone || '';
   updateAuthNote();
 }
 function setPackageCardState(key) { document.querySelectorAll('[data-package-card]').forEach((card) => card.classList.toggle('selected-package', card.dataset.packageCard === key)); }
@@ -500,7 +441,7 @@ function goToStep(step) {
   $('wizardBar').style.width = `${(step / 4) * 100}%`;
   $('wizPrev').style.display = step === 1 ? 'none' : 'block';
   $('wizNext').style.display = step === 4 ? 'none' : 'block';
-  $('wizDownloadPdf').style.display = step === 4 ? 'block' : 'none';
+  if ($('wizDownloadPdf')) $('wizDownloadPdf').style.display = step === 4 ? 'block' : 'none';
   $('wizSubmit').style.display = step === 4 ? 'block' : 'none';
   currentStep = step;
 }
@@ -646,8 +587,8 @@ function resetInquiryForm() {
 }
 function submitInquiry() {
   if (!currentUser || currentUser.role !== 'customer') {
-    showToast('Sign in to send your inquiry.', '#c0392b');
-    openAuth();
+    showToast('Sign in on the login page before sending your inquiry.', '#c0392b');
+    setTimeout(() => { window.location.href = 'login.php'; }, 800);
     return;
   }
   if (!validateCurrentStep()) return;
@@ -691,13 +632,8 @@ function submitInquiry() {
   refreshAdminBookings();
   refreshAdminUsers();
   renderCustomerInquiries();
-  initAdminCharts();
-  updateNav();
   showToast('Inquiry saved. Our team will review it within 24 hours.');
-  
-  // Generate and download the soft quote before resetting the form
-  downloadSoftQuote();
-  
+
   resetInquiryForm();
 }
 function validateInput(event) {
@@ -775,59 +711,6 @@ function initPetals() {
 }
 function boot() {
   saveInquiries();
-  $('authClose').onclick = closeAuth;
-  $('authOverlay').addEventListener('click', (event) => { if (event.target === $('authOverlay')) closeAuth(); });
-  document.querySelectorAll('.auth-tab').forEach((tab) => {
-    tab.onclick = function onTabClick() {
-      document.querySelectorAll('.auth-tab').forEach((item) => item.classList.remove('active'));
-      document.querySelectorAll('.auth-panel').forEach((panel) => panel.classList.remove('active'));
-      this.classList.add('active');
-      $(`panel-${this.dataset.tab}`).classList.add('active');
-      clearFormErrors();
-    };
-  });
-  $('goRegister').onclick = (event) => { event.preventDefault(); document.querySelectorAll('.auth-tab')[1].click(); };
-  $('goLogin').onclick = (event) => { event.preventDefault(); document.querySelectorAll('.auth-tab')[0].click(); };
-  $('loginBtn').onclick = () => {
-    clearFormErrors();
-    const email = $('loginEmail').value.trim();
-    const password = $('loginPassword').value;
-    if (!email || !password) return showError('loginError', 'Please fill in all fields.');
-    if (btoa(email) === ADMIN_EMAIL_B64 && btoa(password) === ADMIN_PASS_B64) {
-      saveSession({ name: 'Administrator', email, role: 'admin' });
-      closeAuth();
-      updateNav();
-      showToast('Signed in as admin. Open the dashboard from the account menu anytime.');
-      return;
-    }
-    const user = users.find((item) => item.email === email && item.password === password);
-    if (!user) return showError('loginError', 'Invalid credentials. Please try again.');
-    saveSession({ name: `${user.firstName} ${user.lastName}`, email: user.email, role: 'customer', phone: user.phone });
-    closeAuth();
-    updateNav();
-    prefillInquiryContact();
-    showToast(`Welcome back, ${user.firstName}.`);
-  };
-  $('registerBtn').onclick = () => {
-    clearFormErrors();
-    const firstName = $('regFirst').value.trim();
-    const lastName = $('regLast').value.trim();
-    const email = $('regEmail').value.trim();
-    const phone = $('regPhone').value.trim();
-    const password = $('regPassword').value;
-    const confirm = $('regConfirm').value;
-    if (!firstName || !lastName || !email || !phone || !password) return showError('regError', 'Please fill in all required fields.');
-    if (password.length < 6) return showError('regError', 'Password must be at least 6 characters.');
-    if (password !== confirm) return showError('regError', 'Passwords do not match.');
-    if (users.some((item) => item.email === email)) return showError('regError', 'An account with this email already exists.');
-    users.push({ firstName, lastName, email, phone, password, registered: new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) });
-    saveUsers();
-    saveSession({ name: `${firstName} ${lastName}`, email, role: 'customer', phone });
-    closeAuth();
-    updateNav();
-    prefillInquiryContact();
-    showToast(`Account created for ${firstName}.`);
-  };
   $('hamburger').onclick = () => $('mobileMenu').classList.add('open');
   $('mobileClose').onclick = closeMobile;
   window.addEventListener('scroll', () => $('navbar').classList.toggle('scrolled', window.scrollY > 60));
@@ -852,7 +735,6 @@ function boot() {
   document.querySelectorAll('.wiz-addon').forEach((input) => input.onchange = syncEstimatorFromWizard);
   $('wizNext').onclick = () => goToStep(currentStep + 1);
   $('wizPrev').onclick = () => goToStep(currentStep - 1);
-  $('wizDownloadPdf').onclick = downloadSoftQuote;
   $('wizSubmit').onclick = submitInquiry;
   updateNav();
   updateCalculator();

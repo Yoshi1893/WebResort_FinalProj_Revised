@@ -1,0 +1,12 @@
+<?php require __DIR__ . '/includes/header.php'; ?>
+<?php require __DIR__ . '/includes/sections/hero.php'; ?>
+<?php require __DIR__ . '/includes/sections/about.php'; ?>
+<?php require __DIR__ . '/includes/sections/venues.php'; ?>
+<?php require __DIR__ . '/includes/sections/packages.php'; ?>
+<?php require __DIR__ . '/includes/sections/estimator.php'; ?>
+<?php require __DIR__ . '/includes/sections/gallery.php'; ?>
+<?php require __DIR__ . '/includes/sections/testimonials.php'; ?>
+<?php require __DIR__ . '/includes/sections/explorer.php'; ?>
+<?php require __DIR__ . '/includes/sections/availability.php'; ?>
+<?php require __DIR__ . '/includes/sections/inquiry.php'; ?>
+<?php require __DIR__ . '/includes/footer.php'; ?>
