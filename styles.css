@@ -26,53 +26,6 @@ body {
   overflow-x: hidden;
 }
 
-/* AUTH MODAL */
-.auth-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 28, 15, 0.78);
-  backdrop-filter: blur(7px);
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.35s;
-}
-.auth-overlay.open {
-  opacity: 1;
-  pointer-events: all;
-}
-.auth-modal {
-  background: var(--white);
-  border-radius: 6px;
-  width: 100%;
-  max-width: 460px;
-  padding: 50px 44px 40px;
-  position: relative;
-  transform: translateY(30px) scale(0.97);
-  transition: transform 0.35s;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-.auth-overlay.open .auth-modal {
-  transform: translateY(0) scale(1);
-}
-.auth-modal-close {
-  position: absolute;
-  top: 18px;
-  right: 22px;
-  background: none;
-  border: none;
-  font-size: 22px;
-  color: var(--text-light);
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.auth-modal-close:hover {
-  color: var(--dark);
-}
 .auth-brand {
   font-family: "Cormorant Garamond", serif;
   font-size: 13px;
@@ -99,11 +52,6 @@ body {
   color: var(--text-light);
   margin-bottom: 28px;
 }
-.auth-tabs {
-  display: flex;
-  border-bottom: 1px solid #e8e3db;
-  margin-bottom: 26px;
-}
 .auth-tab {
   flex: 1;
   padding: 10px 0;
@@ -120,12 +68,6 @@ body {
 .auth-tab.active {
   color: var(--sage-dark);
   border-bottom-color: var(--gold);
-}
-.auth-panel {
-  display: none;
-}
-.auth-panel.active {
-  display: block;
 }
 .auth-group {
   margin-bottom: 16px;
@@ -196,42 +138,6 @@ body {
   text-decoration: none;
   font-weight: 500;
 }
-.auth-role-toggle {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-.role-btn {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  background: white;
-  font-family: "Jost", sans-serif;
-  font-size: 12px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.25s;
-  color: var(--text-light);
-}
-.role-btn.active {
-  border-color: var(--sage-dark);
-  background: var(--sage-dark);
-  color: white;
-}
-.admin-key-field {
-  display: none;
-}
-.admin-key-field.show {
-  display: block;
-}
-.auth-reg-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
 /* NAV */
 nav {
   position: fixed;
@@ -1872,16 +1778,11 @@ footer {
   .footer-bottom {
     flex-direction: column;
   }
-  .form-row,
-  .auth-reg-row {
+  .form-row {
     grid-template-columns: 1fr;
   }
   .about-stats {
     grid-template-columns: 1fr 1fr;
-  }
-  .auth-modal {
-    padding: 36px 22px 30px;
-    margin: 16px;
   }
   .admin-stats-row {
     grid-template-columns: 1fr 1fr;
@@ -3273,81 +3174,6 @@ footer {
 .status-closed {
   background: #f8d7da;
   color: #842029;
-}
-
-/* PHP Pages Styling */
-.container {
-  max-width: 500px;
-  margin: 80px auto;
-  padding: 60px 40px;
-  background: var(--white);
-  border-radius: 12px;
-  box-shadow: 0 25px 70px rgba(0,0,0,0.12);
-  font-family: "Jost", sans-serif;
-}
-.container h2 {
-  font-family: "Cormorant Garamond", serif;
-  font-size: 40px;
-  text-align: center;
-  color: var(--dark);
-  margin-bottom: 40px;
-}
-.container form {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-.container input,
-.container textarea,
-.container select {
-  padding: 18px 20px;
-  border: 1px solid #e8e3db;
-  border-radius: 6px;
-  font-size: 16px;
-  transition: all 0.3s;
-  background: #faf9f7;
-}
-.container input:focus,
-.container textarea:focus,
-.container select:focus {
-  outline: none;
-  border-color: var(--gold);
-  background: var(--white);
-  box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
-}
-.container textarea {
-  resize: vertical;
-  min-height: 140px;
-}
-.container button {
-  padding: 20px;
-  background: var(--sage-dark);
-  color: var(--white);
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-transform: uppercase;
-}
-.container button:hover {
-  background: var(--gold);
-  transform: translateY(-2px);
-  box-shadow: 0 15px 40px rgba(201,168,76,0.3);
-}
-.container p {
-  text-align: center;
-  margin: 30px 0;
-}
-.container a {
-  color: var(--sage-dark);
-  text-decoration: none;
-  font-weight: 500;
-}
-.container a:hover {
-  color: var(--gold);
 }
 
 .auth-page {

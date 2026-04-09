@@ -6,9 +6,9 @@ This repository is a small resort/events booking website for **9 Waves Events Pl
 
 Current files are a mix of:
 
-- a public landing page in `index.html`
+- a primary public landing page in `index.php`
 - one global stylesheet in `styles.css`
-- one large frontend script in `script.js`
+- split frontend scripts under `assets/js/`
 - standalone PHP pages for auth/inquiry work:
   - `login.php`
   - `register.php`
@@ -33,20 +33,20 @@ The current approved direction for this repo is a **frontend-first refactor**:
 
 There are effectively **two parallel implementations** in this repo:
 
-1. `index.html` + `script.js`
-   - Main user-facing landing page
-   - Multi-step inquiry wizard
-   - Client-side auth modal
-   - Client-side customer account panel
-   - Client-side admin dashboard
-   - Persists data in `localStorage`
+1. Current frontend-first PHP page set
+   - `index.php` plus `includes/sections/*.php`
+   - `assets/js/main.js`
+   - `assets/js/account.js`
+   - `assets/js/admin.js`
+   - `assets/js/mock-data.js`
+   - Frontend preview state stored in one centralized mock-data layer
 
 2. PHP pages + MySQL
    - Traditional form-post pages
    - Uses PDO through `db.php`
    - Persists users/inquiries in MySQL
 
-These two paths are **not integrated**. The SPA-like flow on `index.html` does **not** submit to the PHP endpoints. The admin dashboard in `script.js` reads browser `localStorage`, not the MySQL tables.
+These two paths are **not integrated**. The frontend-first pages are still mock-data driven for account/admin interactivity, while `login.php`, `register.php`, and `inquiry.php` remain DB-backed forms.
 
 For this current refactor, assume the work is **frontend-owned** unless explicitly stated otherwise. That means:
 
@@ -56,7 +56,7 @@ For this current refactor, assume the work is **frontend-owned** unless explicit
 
 Any change involving auth, registration, inquiries, or dashboard behavior must first decide whether it belongs to:
 
-- the `localStorage` prototype path,
+- the frontend mock-data preview path,
 - the PHP/MySQL path,
 - or a proper integration of both.
 
@@ -64,27 +64,30 @@ Do not assume the database is the source of truth for the landing page unless yo
 
 ## Key Files
 
-- `index.html`: current landing page markup. This is planned to become `index.php` and be segmented into includes.
-- `script.js`: current monolithic frontend behavior. This is planned to be split by page responsibility.
+- `index.php`: segmented public landing page assembled from includes. This is now the primary entry point.
 - `styles.css`: all styling for the site.
 - `db.php`: shared PDO connection. Assumes MySQL on `localhost:3307`, DB name `9waves_db`, username `root`, empty password.
 - `login.php`: DB-backed login page.
 - `register.php`: DB-backed registration page.
 - `inquiry.php`: DB-backed inquiry submission page.
+- `account.php`: frontend-first customer account page driven by centralized mock data.
+- `admin.php`: frontend-first admin page driven by centralized mock data.
+- `inquiry-success.php`: confirmation-style success page replacing the old PDF flow.
 - `setup.sql`: schema for `users` and `inquiries`, plus sample rows.
 - `AGENTS.md`: current repo guidance and approved direction summary.
 
 ## Frontend Conventions
 
 - There is no bundler, package manager, or build step.
-- External libraries are loaded from CDNs in `index.html`.
+- External libraries are loaded from CDNs in the PHP pages/includes.
 - The front end is plain DOM-manipulation JavaScript, not React/Vue/etc.
-- `script.js` uses a small helper: `const $ = (id) => document.getElementById(id);`
-- Client state is stored in `localStorage` under:
-  - `9waves_users`
-  - `9waves_current`
-  - `9waves_inquiries`
-- The admin login in the front-end prototype is hardcoded via base64-encoded constants in `script.js`.
+- The current frontend pass uses:
+  - `assets/js/main.js`
+  - `assets/js/account.js`
+  - `assets/js/admin.js`
+  - `assets/js/mock-data.js`
+- `assets/js/mock-data.js` is the centralized mock-data layer and persists preview state in `localStorage` under:
+  - `9waves_frontend_mock_data_v1`
 
 Approved frontend refactor direction:
 
@@ -95,7 +98,7 @@ Approved frontend refactor direction:
 - keep marketing content mostly static in phase 1
 - use a centralized mock-data layer for frontend interactions instead of scattering `localStorage` auth/session behavior
 
-Planned file direction:
+Current file direction:
 
 - `index.php`
 - `account.php`
@@ -163,15 +166,14 @@ Use manual verification after changes:
 
 ## Known Constraints And Risks
 
-- The main landing page is a client-side prototype and is not server-backed.
-- Passwords for the front-end prototype are stored in plain text in `localStorage`.
+- The main landing page is still frontend-first and is not server-backed.
 - The front-end and PHP flows can drift because they duplicate business concepts independently.
 - PHP may not resolve from `PATH` until a new shell session is started.
 - Backend persistence/auth should not be faked again during the current frontend-first pass.
 
 ## Guidance For Future Agents
 
-- Read `index.html`, `script.js`, and the relevant PHP file before changing behavior.
+- Read `index.php`, the relevant `assets/js/*.js` file, and the relevant PHP file before changing behavior.
 - Be explicit about whether a requested feature is for the current frontend pass or for later backend integration.
 - Preserve the current visual design unless the user asks for redesign.
 - Prefer page segmentation and responsibility cleanup over a full-stack rewrite in this phase.
@@ -182,7 +184,7 @@ Use manual verification after changes:
 
 ### Phase 1
 
-- Convert `index.html` into `index.php`
+- Establish `index.php` as the segmented landing page entry point
 - Segment the landing page into includes
 - Preserve the current public UI and wizard placement
 

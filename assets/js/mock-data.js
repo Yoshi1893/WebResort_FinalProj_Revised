@@ -208,6 +208,7 @@
     } catch (error) {
       // Ignore persistence failures in preview mode.
     }
+    window.MockData = clone(state);
   }
 
   function syncCurrentUserIntoUsers() {
