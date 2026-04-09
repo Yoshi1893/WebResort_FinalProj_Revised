@@ -1,6 +1,6 @@
 (() => {
   const $ = (id) => document.getElementById(id);
-  const PACKAGE_DATA = window.MockData?.packageData || {};
+  const PACKAGE_DATA = window.MockStore?.getPackageData() || {};
   let currentStep = 1;
   let isSyncingEstimate = false;
   const wizardState = { venue: 'Pearl Ballroom' };

@@ -1,12 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const data = window.MockData || {};
-  const admin = data.adminUser;
-  const users = data.users || [];
-  const inquiries = data.inquiries || [];
-  const packages = data.packages || [];
-  const amenities = data.amenities || [];
-  const venues = data.venues || [];
-  const rooms = data.rooms || [];
+  const store = window.MockStore;
   const $ = (id) => document.getElementById(id);
 
   function showToast(message, background) {
@@ -36,15 +29,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${(item.firstName || '').charAt(0)}${(item.lastName || '').charAt(0)}`.toUpperCase() || 'AD';
   }
 
-  function nextId(items) {
-    return items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1;
+  function snapshot() {
+    return {
+      admin: store.getAdminUser(),
+      users: store.getUsers(),
+      inquiries: store.getInquiries(),
+      packages: store.getPackages(),
+      amenities: store.getAmenities(),
+      venues: store.getVenues(),
+      rooms: store.getRooms()
+    };
   }
 
   function fillRoomVenueOptions() {
+    const { venues } = snapshot();
     $('roomVenue').innerHTML = venues.map((venue) => `<option value="${venue.id}">${venue.name}</option>`).join('');
   }
 
   function renderStats() {
+    const { admin, packages, amenities, users, inquiries } = snapshot();
     $('statPackages').textContent = packages.filter((item) => item.active).length;
     $('statAmenities').textContent = amenities.filter((item) => item.active).length;
     $('statUsers').textContent = users.filter((item) => item.role === 'customer').length;
@@ -72,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function resetRoomForm() {
+    const { venues } = snapshot();
     $('roomForm').reset();
     $('roomId').value = '';
     $('roomActive').value = 'true';
@@ -79,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderPackages() {
+    const { packages } = snapshot();
     $('packageTableBody').innerHTML = packages.map((item) => `
       <tr>
         <td>${item.name}</td>
@@ -89,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </tr>`).join('');
     document.querySelectorAll('[data-package-edit]').forEach((button) => {
       button.addEventListener('click', () => {
+        const { packages } = snapshot();
         const item = packages.find((pkg) => pkg.id === Number(button.dataset.packageEdit));
         if (!item) return;
         $('packageId').value = item.id;
@@ -103,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderAmenities() {
+    const { amenities } = snapshot();
     $('amenityTableBody').innerHTML = amenities.map((item) => `
       <tr>
         <td>${item.name}</td>
@@ -112,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </tr>`).join('');
     document.querySelectorAll('[data-amenity-edit]').forEach((button) => {
       button.addEventListener('click', () => {
+        const { amenities } = snapshot();
         const item = amenities.find((amenity) => amenity.id === Number(button.dataset.amenityEdit));
         if (!item) return;
         $('amenityId').value = item.id;
@@ -123,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderVenues() {
+    const { venues } = snapshot();
     $('venueTableBody').innerHTML = venues.map((item) => `
       <tr>
         <td>${item.name}</td>
@@ -131,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </tr>`).join('');
     document.querySelectorAll('[data-venue-edit]').forEach((button) => {
       button.addEventListener('click', () => {
+        const { venues } = snapshot();
         const item = venues.find((venue) => venue.id === Number(button.dataset.venueEdit));
         if (!item) return;
         $('venueId').value = item.id;
@@ -143,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderRooms() {
+    const { rooms, venues } = snapshot();
     $('roomTableBody').innerHTML = rooms.map((item) => {
       const venue = venues.find((entry) => entry.id === item.venueId);
       return `
@@ -155,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
     document.querySelectorAll('[data-room-edit]').forEach((button) => {
       button.addEventListener('click', () => {
+        const { rooms } = snapshot();
         const item = rooms.find((room) => room.id === Number(button.dataset.roomEdit));
         if (!item) return;
         $('roomId').value = item.id;
@@ -167,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderUsers() {
+    const { users } = snapshot();
     const search = $('userSearch').value.trim().toLowerCase();
     const role = $('userRoleFilter').value;
     const archive = $('userArchiveFilter').value;
@@ -188,9 +201,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('[data-user-archive]').forEach((button) => {
       button.addEventListener('click', () => {
-        const item = users.find((user) => user.id === Number(button.dataset.userArchive));
+        const item = store.archiveUser(Number(button.dataset.userArchive));
         if (!item || item.role !== 'customer') return;
-        item.archived = true;
+        renderStats();
         renderUsers();
         showToast(`Archived ${item.firstName} ${item.lastName}.`);
       });
@@ -198,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderInquiries() {
+    const { inquiries } = snapshot();
     const search = $('inquirySearch').value.trim().toLowerCase();
     const status = $('inquiryStatusFilter').value;
     const eventType = $('inquiryEventFilter').value;
@@ -251,10 +265,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('[data-inquiry-save]').forEach((button) => {
       button.addEventListener('click', () => {
-        const inquiry = inquiries.find((item) => item.id === Number(button.dataset.inquirySave));
         const select = document.querySelector(`[data-inquiry-status="${button.dataset.inquirySave}"]`);
-        if (!inquiry || !select) return;
-        inquiry.status = select.value;
+        if (!select) return;
+        const inquiry = store.updateInquiryStatus(Number(button.dataset.inquirySave), select.value);
+        if (!inquiry) return;
         renderInquiries();
         showToast(`Updated ${inquiry.reference} to ${select.value}.`);
       });
@@ -265,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     const id = Number($('packageId').value);
     const payload = {
-      id: id || nextId(packages),
+      id: id || undefined,
       key: $('packageName').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       name: $('packageName').value.trim(),
       basePrice: Number($('packageBasePrice').value),
@@ -274,9 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
       active: $('packageActive').value === 'true',
       maxPrivateRooms: Number($('packageRoomLimit').value)
     };
-    const existing = packages.findIndex((item) => item.id === id);
-    if (existing >= 0) packages[existing] = payload;
-    else packages.push(payload);
+    store.savePackage(payload);
     renderStats();
     renderPackages();
     resetPackageForm();
@@ -287,14 +299,12 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     const id = Number($('amenityId').value);
     const payload = {
-      id: id || nextId(amenities),
+      id: id || undefined,
       name: $('amenityName').value.trim(),
       price: Number($('amenityPrice').value),
       active: $('amenityActive').value === 'true'
     };
-    const existing = amenities.findIndex((item) => item.id === id);
-    if (existing >= 0) amenities[existing] = payload;
-    else amenities.push(payload);
+    store.saveAmenity(payload);
     renderStats();
     renderAmenities();
     resetAmenityForm();
@@ -305,14 +315,13 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     const id = Number($('venueId').value);
     const payload = {
-      id: id || nextId(venues),
+      id: id || undefined,
       name: $('venueName').value.trim(),
       description: $('venueDescription').value.trim(),
       active: $('venueActive').value === 'true'
     };
-    const existing = venues.findIndex((item) => item.id === id);
-    if (existing >= 0) venues[existing] = payload;
-    else venues.push(payload);
+    store.saveVenue(payload);
+    renderStats();
     renderVenues();
     renderRooms();
     resetVenueForm();
@@ -323,15 +332,13 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     const id = Number($('roomId').value);
     const payload = {
-      id: id || nextId(rooms),
+      id: id || undefined,
       venueId: Number($('roomVenue').value),
       name: $('roomName').value.trim(),
       note: $('roomNote').value.trim(),
       active: $('roomActive').value === 'true'
     };
-    const existing = rooms.findIndex((item) => item.id === id);
-    if (existing >= 0) rooms[existing] = payload;
-    else rooms.push(payload);
+    store.saveRoom(payload);
     renderRooms();
     resetRoomForm();
     showToast('Room saved.');

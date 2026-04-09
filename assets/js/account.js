@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const data = window.MockData || {};
-  const user = data.currentUser;
-  const inquiries = (data.inquiries || []).filter((item) => item.customerEmail === user.email);
+  const store = window.MockStore;
   const $ = (id) => document.getElementById(id);
 
   function showToast(message, background) {
@@ -32,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateAvatar() {
+    const user = store.getCurrentUser();
     const avatar = $('accountAvatarPreview');
     if (!avatar) return;
     if (user.profileImage) {
@@ -44,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function populateProfile() {
+    const user = store.getCurrentUser();
     $('accountGreeting').textContent = user.firstName || 'Guest';
     $('accountFirstName').value = user.firstName || '';
     $('accountLastName').value = user.lastName || '';
@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderInquiries() {
+    const user = store.getCurrentUser();
+    const inquiries = store.getInquiriesByEmail(user.email);
     const list = $('accountInquiryList');
     if (!list) return;
     if (!inquiries.length) {
@@ -94,9 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('profileForm').addEventListener('submit', (event) => {
     event.preventDefault();
-    user.firstName = $('accountFirstName').value.trim();
-    user.lastName = $('accountLastName').value.trim();
-    user.phone = $('accountPhone').value.trim();
+    store.saveCurrentUserProfile({
+      firstName: $('accountFirstName').value.trim(),
+      lastName: $('accountLastName').value.trim(),
+      phone: $('accountPhone').value.trim()
+    });
     populateProfile();
     showToast('Profile details updated in the frontend preview.');
   });
@@ -122,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      user.profileImage = reader.result;
+      store.setCurrentUserProfileImage(reader.result);
       updateAvatar();
       showToast('Profile picture updated in the frontend preview.');
     };
@@ -130,13 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   $('removePhotoBtn').addEventListener('click', () => {
-    user.profileImage = '';
+    store.setCurrentUserProfileImage('');
     $('profileImageInput').value = '';
     updateAvatar();
     showToast('Profile picture removed.');
   });
 
   $('archiveAccountBtn').addEventListener('click', () => {
+    store.archiveCurrentUser();
+    populateProfile();
     showToast('Account archive flow confirmed for the frontend preview.');
   });
 
