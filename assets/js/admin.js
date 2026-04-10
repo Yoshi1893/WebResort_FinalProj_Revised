@@ -180,50 +180,100 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderUsers() {
     const { users } = snapshot();
-    const search = $('userSearch').value.trim().toLowerCase();
-    const role = $('userRoleFilter').value;
-    const archive = $('userArchiveFilter').value;
+    const search       = $('userSearch').value.trim().toLowerCase();
+    const role         = $('userRoleFilter').value;
+    const statusFilter = $('userStatusFilter').value;
+
     const filtered = users.filter((item) => {
       const matchesSearch = !search || `${item.firstName} ${item.lastName} ${item.email}`.toLowerCase().includes(search);
-      const matchesRole = role === 'all' || item.role === role;
-      const matchesArchive = archive === 'all' || (archive === 'archived' ? item.archived : !item.archived);
-      return matchesSearch && matchesRole && matchesArchive;
+      const matchesRole   = role === 'all' || item.role === role;
+      // Support both mock (archived bool) and real DB (status string)
+      const userStatus    = item.status || (item.archived ? 'revoked' : 'active');
+      const matchesStatus = statusFilter === 'all' || userStatus === statusFilter;
+      return matchesSearch && matchesRole && matchesStatus;
     });
 
-    $('userTableBody').innerHTML = filtered.map((item) => `
-      <tr>
-        <td>${item.firstName} ${item.lastName}<br><span class="admin-muted">${item.email}</span></td>
-        <td>${item.role}</td>
-        <td>${item.phone || 'Not provided'}</td>
-        <td><span class="status-badge ${item.archived ? 'status-closed' : 'status-proposal'}">${item.archived ? 'Archived' : 'Active'}</span></td>
-        <td>${item.role === 'customer' ? `<button class="tbl-btn ${item.archived ? 'tbl-confirm' : 'tbl-cancel'}" data-user-archive="${item.id}">${item.archived ? 'Archived' : 'Archive'}</button>` : '<span class="admin-muted">Restricted</span>'}</td>
-      </tr>`).join('');
+    $('userTableBody').innerHTML = filtered.map((item) => {
+      const userStatus   = item.status || (item.archived ? 'revoked' : 'active');
+      const isRevoked    = userStatus === 'revoked';
+      const isDeleted    = userStatus === 'deleted';
+      const badgeClass   = userStatus === 'active' ? 'status-proposal' : 'status-closed';
+      const badgeLabel   = userStatus.charAt(0).toUpperCase() + userStatus.slice(1);
 
-    document.querySelectorAll('[data-user-archive]').forEach((button) => {
+      let actionCell = '<span class="admin-muted">Restricted</span>';
+      if (item.role === 'customer' && !isDeleted) {
+        actionCell = `
+          <button
+            class="tbl-btn ${isRevoked ? 'tbl-confirm' : 'tbl-cancel'}"
+            data-user-revoke="${item.id}"
+            data-current-status="${userStatus}">
+            ${isRevoked ? 'Restore' : 'Revoke'}
+          </button>`;
+      } else if (isDeleted) {
+        actionCell = '<span class="admin-muted">Deleted</span>';
+      }
+
+      return `
+        <tr>
+          <td>${item.firstName} ${item.lastName}<br><span class="admin-muted">${item.email}</span></td>
+          <td>${item.role}</td>
+          <td>${item.phone || 'Not provided'}</td>
+          <td><span class="status-badge ${badgeClass}">${badgeLabel}</span></td>
+          <td>${actionCell}</td>
+        </tr>`;
+    }).join('');
+
+    // REVOKE / RESTORE — calls backend, falls back to mock if unavailable
+    document.querySelectorAll('[data-user-revoke]').forEach((button) => {
       button.addEventListener('click', () => {
-        const item = store.archiveUser(Number(button.dataset.userArchive));
-        if (!item || item.role !== 'customer') return;
-        renderStats();
-        renderUsers();
-        showToast(`Archived ${item.firstName} ${item.lastName}.`);
+        const userId       = button.dataset.userRevoke;
+        const currentStatus = button.dataset.currentStatus;
+        const action       = currentStatus === 'revoked' ? 'restore' : 'revoke';
+        const reason       = action === 'revoke'
+          ? (prompt('Reason for revoking access (optional):') || 'No reason provided')
+          : 'Access restored by admin';
+
+        fetch('actions/revoke_user.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `user_id=${userId}&action=${action}&reason=${encodeURIComponent(reason)}`
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              renderStats();
+              renderUsers();
+              showToast(`User ${action === 'revoke' ? 'revoked' : 'restored'} successfully.`);
+            } else {
+              showToast(data.message || 'Action failed.', '#c0392b');
+            }
+          })
+          .catch(() => {
+            // Fallback: frontend-only mode (no PHP backend running)
+            const item = store.archiveUser(Number(userId));
+            if (!item) return;
+            renderStats();
+            renderUsers();
+            showToast(`${item.firstName} ${item.lastName} ${action}d (frontend preview).`);
+          });
       });
     });
   }
 
   function renderInquiries() {
     const { inquiries } = snapshot();
-    const search = $('inquirySearch').value.trim().toLowerCase();
-    const status = $('inquiryStatusFilter').value;
-    const eventType = $('inquiryEventFilter').value;
-    const packageKey = $('inquiryPackageFilter').value;
-    const sort = $('inquirySort').value;
+    const search      = $('inquirySearch').value.trim().toLowerCase();
+    const status      = $('inquiryStatusFilter').value;
+    const eventType   = $('inquiryEventFilter').value;
+    const packageKey  = $('inquiryPackageFilter').value;
+    const sort        = $('inquirySort').value;
 
     const filtered = inquiries
       .filter((item) => {
-        const haystack = `${item.customerName} ${item.customerEmail}`.toLowerCase();
-        const matchesSearch = !search || haystack.includes(search);
-        const matchesStatus = status === 'all' || item.status === status;
-        const matchesEvent = eventType === 'all' || item.event === eventType;
+        const haystack      = `${item.customerName} ${item.customerEmail}`.toLowerCase();
+        const matchesSearch  = !search || haystack.includes(search);
+        const matchesStatus  = status === 'all' || item.status === status;
+        const matchesEvent   = eventType === 'all' || item.event === eventType;
         const matchesPackage = packageKey === 'all' || item.packageKey === packageKey;
         return matchesSearch && matchesStatus && matchesEvent && matchesPackage;
       })
@@ -243,9 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>
             <select class="admin-status-select" data-inquiry-status="${item.id}">
               <option value="submitted" ${item.status === 'submitted' ? 'selected' : ''}>Submitted</option>
-              <option value="review" ${item.status === 'review' ? 'selected' : ''}>Under Review</option>
-              <option value="proposal" ${item.status === 'proposal' ? 'selected' : ''}>Proposal Sent</option>
-              <option value="closed" ${item.status === 'closed' ? 'selected' : ''}>Closed</option>
+              <option value="review"    ${item.status === 'review'    ? 'selected' : ''}>Under Review</option>
+              <option value="proposal"  ${item.status === 'proposal'  ? 'selected' : ''}>Proposal Sent</option>
+              <option value="closed"    ${item.status === 'closed'    ? 'selected' : ''}>Closed</option>
             </select>
             <button class="tbl-btn tbl-confirm" data-inquiry-save="${item.id}">Save</button>
           </td>
@@ -350,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('roomReset').addEventListener('click', resetRoomForm);
   $('userSearch').addEventListener('input', renderUsers);
   $('userRoleFilter').addEventListener('change', renderUsers);
-  $('userArchiveFilter').addEventListener('change', renderUsers);
+  $('userStatusFilter').addEventListener('change', renderUsers);
   $('inquirySearch').addEventListener('input', renderInquiries);
   $('inquiryStatusFilter').addEventListener('change', renderInquiries);
   $('inquiryEventFilter').addEventListener('change', renderInquiries);

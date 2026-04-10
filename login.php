@@ -4,28 +4,53 @@ require_once 'db.php';
 
 $error = '';
 $success = '';
+$access_notice = '';
 
 if ($db_error) {
     $error = $db_error;
 }
 
+$reason = $_GET['reason'] ?? '';
+$access_messages = [
+    'revoked'       => 'Your account access has been revoked. Please contact support.',
+    'deleted'       => 'Your account has been deleted. Thank you for using 9 Waves.',
+    'not_logged_in' => 'Please log in to continue.',
+    'unauthorized'  => 'You do not have permission to access that page.',
+    'not_found'     => 'Account not found. Please log in again.',
+];
+$access_notice = $access_messages[$reason] ?? '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
-    $email = trim($_POST['email'] ?? '');
+    $email    = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
     if (empty($email) || empty($password)) {
         $error = 'Email and password required.';
     } else {
-        $stmt = $pdo->prepare("SELECT id, CONCAT(first_name, ' ', last_name) as name, email, password FROM users WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, password, role, status FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_name'] = $user['name'];
-            $_SESSION['user_email'] = $user['email'];
-            $success = 'Login successful! Redirecting...';
-            header('Refresh: 1.5; url=account.php');
+            if ($user['status'] === 'revoked') {
+                $error = 'Your account access has been revoked. Please contact support.';
+            } elseif ($user['status'] === 'deleted') {
+                $error = 'This account has been deleted.';
+            } else {
+                $_SESSION['user_id']    = $user['id'];
+                $_SESSION['user_name']  = $user['first_name'] . ' ' . $user['last_name'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_role']  = $user['role'];
+
+                $success = 'Login successful! Redirecting...';
+
+                // Redirect based on role
+                if ($user['role'] === 'admin') {
+                    header('Refresh: 1.5; url=admin.php');
+                } else {
+                    header('Refresh: 1.5; url=account.php');
+                }
+            }
         } else {
             $error = 'Invalid email or password.';
         }
@@ -61,6 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
                 <p class="auth-shell-copy">This page is now aligned with the new frontend pages. The form still uses the existing PHP login flow, but it degrades gracefully if the database is offline.</p>
             </div>
 
+            <?php if ($access_notice): ?>
+                <div class="auth-feedback auth-feedback-error"><?php echo htmlspecialchars($access_notice); ?></div>
+            <?php endif; ?>
             <?php if ($error): ?>
                 <div class="auth-feedback auth-feedback-error"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
@@ -82,7 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
 
             <div class="auth-shell-links">
                 <p>No account yet? <a href="register.php">Create one here</a>.</p>
-                <p>Frontend demo pages stay directly viewable in this phase: <a href="account.php">Account</a> and <a href="admin.php">Admin</a>.</p>
             </div>
         </section>
     </main>

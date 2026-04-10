@@ -140,10 +140,26 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Profile picture removed.');
   });
 
-  $('archiveAccountBtn').addEventListener('click', () => {
-    store.archiveCurrentUser();
-    populateProfile();
-    showToast('Account archive flow confirmed for the frontend preview.');
+  // DELETE ACCOUNT — calls backend, falls back to mock if unavailable
+  $('deleteAccountBtn').addEventListener('click', () => {
+    if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+
+    fetch('actions/delete_account.php', { method: 'POST' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          showToast('Account deleted. Redirecting...');
+          setTimeout(() => { window.location.href = data.redirect; }, 1500);
+        } else {
+          showToast(data.message || 'Failed to delete account.', '#c0392b');
+        }
+      })
+      .catch(() => {
+        // Fallback: frontend-only mode (no PHP backend running)
+        store.archiveCurrentUser();
+        populateProfile();
+        showToast('Account deletion submitted (frontend preview).');
+      });
   });
 
   populateProfile();

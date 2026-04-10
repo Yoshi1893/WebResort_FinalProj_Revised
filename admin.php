@@ -1,3 +1,10 @@
+<?php
+session_start();
+require_once 'db.php';
+require_once 'includes/auth.php';
+
+if ($pdo) checkAdminAccess($pdo);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -131,7 +138,7 @@
       <div class="admin-filter-bar">
         <input type="search" id="userSearch" placeholder="Search by name or email">
         <select id="userRoleFilter"><option value="all">All Roles</option><option value="customer">Customer</option><option value="admin">Admin</option></select>
-        <select id="userArchiveFilter"><option value="all">All States</option><option value="active">Active</option><option value="archived">Archived</option></select>
+        <select id="userStatusFilter"><option value="all">All States</option><option value="active">Active</option><option value="revoked">Revoked</option><option value="deleted">Deleted</option></select>
       </div>
       <div class="table-wrap">
         <table class="data-table">
