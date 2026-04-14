@@ -5,7 +5,8 @@ require_once 'includes/auth.php';
 
 if ($pdo) checkUserAccess($pdo);
 
-function resolveProfileImageColumn(PDO $pdo): ?string {
+function resolveProfileImageColumn(PDO $pdo): ?string
+{
   $candidates = ['profile_image', 'profile_picture', 'avatar'];
   $available = [];
   $stmt = $pdo->query("SHOW COLUMNS FROM users");
@@ -27,19 +28,19 @@ $currentUser = null;
 $userInquiries = [];
 
 if ($pdo && !empty($_SESSION['user_id'])) {
-    // Fetch user profile
+  // Fetch user profile
   $imageSelect = $profileImageColumn ? ($profileImageColumn . ' AS profile_image') : 'NULL AS profile_image';
-    $stmt = $pdo->prepare("
+  $stmt = $pdo->prepare("
   SELECT id, first_name, last_name, email, phone, role, status, $imageSelect, created_at
         FROM users
         WHERE id = ?
     ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $currentUser = $stmt->fetch();
+  $stmt->execute([$_SESSION['user_id']]);
+  $currentUser = $stmt->fetch();
 
-    // Fetch inquiries from whichever schema is currently available.
-    try {
-      $stmt = $pdo->prepare("\
+  // Fetch inquiries from whichever schema is currently available.
+  try {
+    $stmt = $pdo->prepare("
         SELECT
           i.id,
           i.reference,
@@ -59,41 +60,48 @@ if ($pdo && !empty($_SESSION['user_id'])) {
         WHERE i.user_id = ?
         ORDER BY i.created_at DESC
       ");
-      $stmt->execute([$_SESSION['user_id']]);
-      $userInquiries = $stmt->fetchAll();
-    } catch (Throwable $e) {
-      $userInquiries = [];
-    }
+    $stmt->execute([$_SESSION['user_id']]);
+    $userInquiries = $stmt->fetchAll();
+    // echo '<pre>';
+    // echo 'Session user_id: ' . $_SESSION['user_id'] . "\n";
+    // echo 'Inquiries found: ' . count($userInquiries) . "\n";
+    // print_r($userInquiries[0] ?? 'EMPTY');
+    // echo '</pre>';
+  } catch (Throwable $e) {
+    // echo '<pre style="color:red">QUERY ERROR: ' . $e->getMessage() . '</pre>';
 
-    // Fallback for simpler inquiry schemas.
-    if (empty($userInquiries)) {
-      try {
-        $inquiryColumns = [];
-        $colStmt = $pdo->query("SHOW COLUMNS FROM inquiries");
-        foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
-          $inquiryColumns[] = strtolower((string) ($col['Field'] ?? ''));
-        }
+    $userInquiries = [];
+  }
 
-        $hasInquiryCol = function (string $name) use ($inquiryColumns): bool {
-          return in_array(strtolower($name), $inquiryColumns, true);
-        };
+  // Fallback for simpler inquiry schemas.
+  if (empty($userInquiries)) {
+    try {
+      $inquiryColumns = [];
+      $colStmt = $pdo->query("SHOW COLUMNS FROM inquiries");
+      foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
+        $inquiryColumns[] = strtolower((string) ($col['Field'] ?? ''));
+      }
 
-        $referenceExpr = $hasInquiryCol('reference')
-          ? 'reference'
-          : "CONCAT('INQ-', DATE_FORMAT(created_at, '%Y%m%d'), '-', LPAD(id, 5, '0'))";
-        $eventExpr = $hasInquiryCol('event_type') ? 'event_type' : "'Not specified'";
-        $preferredDateExpr = $hasInquiryCol('preferred_date')
-          ? 'preferred_date'
-          : ($hasInquiryCol('event_date') ? 'event_date' : 'NULL');
-        $notesExpr = $hasInquiryCol('notes')
-          ? 'notes'
-          : ($hasInquiryCol('message') ? 'message' : "''");
-        $statusExpr = $hasInquiryCol('status') ? 'status' : "'submitted'";
-        $createdAtExpr = $hasInquiryCol('created_at') ? 'created_at' : 'NOW()';
-        $roomsExpr = $hasInquiryCol('requested_rooms') ? 'requested_rooms' : '0';
-        $totalExpr = $hasInquiryCol('estimated_total') ? 'estimated_total' : '0';
+      $hasInquiryCol = function (string $name) use ($inquiryColumns): bool {
+        return in_array(strtolower($name), $inquiryColumns, true);
+      };
 
-        $baseSelect = "
+      $referenceExpr = $hasInquiryCol('reference')
+        ? 'reference'
+        : "CONCAT('INQ-', DATE_FORMAT(created_at, '%Y%m%d'), '-', LPAD(id, 5, '0'))";
+      $eventExpr = $hasInquiryCol('event_type') ? 'event_type' : "'Not specified'";
+      $preferredDateExpr = $hasInquiryCol('preferred_date')
+        ? 'preferred_date'
+        : ($hasInquiryCol('event_date') ? 'event_date' : 'NULL');
+      $notesExpr = $hasInquiryCol('notes')
+        ? 'notes'
+        : ($hasInquiryCol('message') ? 'message' : "''");
+      $statusExpr = $hasInquiryCol('status') ? 'status' : "'submitted'";
+      $createdAtExpr = $hasInquiryCol('created_at') ? 'created_at' : 'NOW()';
+      $roomsExpr = $hasInquiryCol('requested_rooms') ? 'requested_rooms' : '0';
+      $totalExpr = $hasInquiryCol('estimated_total') ? 'estimated_total' : '0';
+
+      $baseSelect = "
           SELECT
             id,
             {$referenceExpr} AS reference,
@@ -110,43 +118,43 @@ if ($pdo && !empty($_SESSION['user_id'])) {
           FROM inquiries
         ";
 
-        if ($hasInquiryCol('user_id')) {
-          $stmt = $pdo->prepare($baseSelect . " WHERE user_id = ? ORDER BY {$createdAtExpr} DESC");
-          $stmt->execute([$_SESSION['user_id']]);
-          $userInquiries = $stmt->fetchAll();
-        }
-
-        if (empty($userInquiries) && $hasInquiryCol('email') && !empty($currentUser['email'])) {
-          $stmt = $pdo->prepare($baseSelect . " WHERE email = ? ORDER BY {$createdAtExpr} DESC");
-          $stmt->execute([$currentUser['email']]);
-          $userInquiries = $stmt->fetchAll();
-        }
-      } catch (Throwable $e) {
-        $userInquiries = [];
+      if ($hasInquiryCol('user_id')) {
+        $stmt = $pdo->prepare($baseSelect . " WHERE user_id = ? ORDER BY {$createdAtExpr} DESC");
+        $stmt->execute([$_SESSION['user_id']]);
+        $userInquiries = $stmt->fetchAll();
       }
-    }
 
-    // Amenities are optional and may not exist in all schemas.
-    try {
-      $amenityStmt = $pdo->prepare("\
+      if (empty($userInquiries) && $hasInquiryCol('email') && !empty($currentUser['email'])) {
+        $stmt = $pdo->prepare($baseSelect . " WHERE email = ? ORDER BY {$createdAtExpr} DESC");
+        $stmt->execute([$currentUser['email']]);
+        $userInquiries = $stmt->fetchAll();
+      }
+    } catch (Throwable $e) {
+      $userInquiries = [];
+    }
+  }
+
+  // Amenities are optional and may not exist in all schemas.
+  try {
+    $amenityStmt = $pdo->prepare("\
         SELECT a.name
         FROM inquiry_amenities ia
         JOIN amenities a ON a.id = ia.amenity_id
         WHERE ia.inquiry_id = ?
       ");
-      foreach ($userInquiries as &$inq) {
-        $amenityStmt->execute([$inq['id']]);
-        $inq['amenities'] = $amenityStmt->fetchAll(PDO::FETCH_COLUMN);
-      }
-      unset($inq);
-    } catch (Throwable $e) {
-      foreach ($userInquiries as &$inq) {
-        if (!isset($inq['amenities'])) {
-          $inq['amenities'] = [];
-        }
-      }
-      unset($inq);
+    foreach ($userInquiries as &$inq) {
+      $amenityStmt->execute([$inq['id']]);
+      $inq['amenities'] = $amenityStmt->fetchAll(PDO::FETCH_COLUMN);
     }
+    unset($inq);
+  } catch (Throwable $e) {
+    foreach ($userInquiries as &$inq) {
+      if (!isset($inq['amenities'])) {
+        $inq['amenities'] = [];
+      }
+    }
+    unset($inq);
+  }
 }
 
 // Handle profile update form submission
@@ -177,16 +185,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile' && $pdo) {
-    $first_name = trim($_POST['first_name'] ?? '');
-    $last_name  = trim($_POST['last_name']  ?? '');
-    $phone      = trim($_POST['phone']      ?? '');
+  $first_name = trim($_POST['first_name'] ?? '');
+  $last_name  = trim($_POST['last_name']  ?? '');
+  $phone      = trim($_POST['phone']      ?? '');
   $uploadedPath = null;
 
-    if (empty($first_name) || empty($last_name)) {
-        $profileError = 'First and last name are required.';
+  if (empty($first_name) || empty($last_name)) {
+    $profileError = 'First and last name are required.';
   } elseif (!$profileImageColumn) {
     $profileError = 'Profile photo column is missing in the users table.';
-    } else {
+  } else {
     // Optional image upload when clicking Save Profile.
     if (!empty($_FILES['profile_image']) && ($_FILES['profile_image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
       if ($_FILES['profile_image']['error'] !== UPLOAD_ERR_OK) {
@@ -249,12 +257,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       $_SESSION['user_name'] = $first_name . ' ' . $last_name;
     }
 
-        // Refresh currentUser after update
-        $imageSelect = $profileImageColumn ? ($profileImageColumn . ' AS profile_image') : 'NULL AS profile_image';
-        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, phone, role, status, $imageSelect, created_at FROM users WHERE id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $currentUser = $stmt->fetch();
-    }
+    // Refresh currentUser after update
+    $imageSelect = $profileImageColumn ? ($profileImageColumn . ' AS profile_image') : 'NULL AS profile_image';
+    $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, phone, role, status, $imageSelect, created_at FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $currentUser = $stmt->fetch();
+  }
 }
 
 // Handle password change form submission
@@ -262,40 +270,42 @@ $passwordSuccess = '';
 $passwordError   = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'change_password' && $pdo) {
-    $current  = $_POST['current_password'] ?? '';
-    $new      = $_POST['new_password']     ?? '';
-    $confirm  = $_POST['confirm_password'] ?? '';
+  $current  = $_POST['current_password'] ?? '';
+  $new      = $_POST['new_password']     ?? '';
+  $confirm  = $_POST['confirm_password'] ?? '';
 
-    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $row = $stmt->fetch();
+  $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+  $stmt->execute([$_SESSION['user_id']]);
+  $row = $stmt->fetch();
 
-    if (!password_verify($current, $row['password'])) {
-        $passwordError = 'Current password is incorrect.';
-    } elseif (strlen($new) < 6) {
-        $passwordError = 'New password must be at least 6 characters.';
-    } elseif ($new !== $confirm) {
-        $passwordError = 'New passwords do not match.';
-    } else {
-        $hashed = password_hash($new, PASSWORD_DEFAULT);
-        $stmt   = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
-        $stmt->execute([$hashed, $_SESSION['user_id']]);
-        $passwordSuccess = 'Password updated successfully.';
-    }
+  if (!password_verify($current, $row['password'])) {
+    $passwordError = 'Current password is incorrect.';
+  } elseif (strlen($new) < 6) {
+    $passwordError = 'New password must be at least 6 characters.';
+  } elseif ($new !== $confirm) {
+    $passwordError = 'New passwords do not match.';
+  } else {
+    $hashed = password_hash($new, PASSWORD_DEFAULT);
+    $stmt   = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $stmt->execute([$hashed, $_SESSION['user_id']]);
+    $passwordSuccess = 'Password updated successfully.';
+  }
 }
 
 // Status badge helper
-function inquiryStatusInfo(string $status): array {
-    $map = [
-        'submitted' => ['label' => 'Submitted',     'class' => 'status-submitted'],
-        'review'    => ['label' => 'Under Review',   'class' => 'status-review'],
-        'proposal'  => ['label' => 'Proposal Sent',  'class' => 'status-proposal'],
-        'closed'    => ['label' => 'Closed',         'class' => 'status-closed'],
-    ];
-    return $map[$status] ?? $map['submitted'];
+function inquiryStatusInfo(string $status): array
+{
+  $map = [
+    'submitted' => ['label' => 'Submitted',     'class' => 'status-submitted'],
+    'review'    => ['label' => 'Under Review',   'class' => 'status-review'],
+    'proposal'  => ['label' => 'Proposal Sent',  'class' => 'status-proposal'],
+    'closed'    => ['label' => 'Closed',         'class' => 'status-closed'],
+  ];
+  return $map[$status] ?? $map['submitted'];
 }
 
-function profileInitials(array $user): string {
+function profileInitials(array $user): string
+{
   $first = strtoupper(substr((string) ($user['first_name'] ?? ''), 0, 1));
   $last = strtoupper(substr((string) ($user['last_name'] ?? ''), 0, 1));
   return trim($first . $last) ?: 'U';
@@ -303,6 +313,7 @@ function profileInitials(array $user): string {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -312,6 +323,7 @@ function profileInitials(array $user): string {
     rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body class="account-page">
   <div class="customer-topbar account-topbar">
     <div class="customer-topbar-title">
@@ -459,45 +471,45 @@ function profileInitials(array $user): string {
             $amenityList = !empty($inq['amenities']) ? implode(', ', $inq['amenities']) : 'None';
             $total = 'PHP ' . number_format($inq['estimated_total'], 0, '.', ',');
           ?>
-          <article class="customer-inquiry-item account-inquiry-item">
-            <button class="account-inquiry-toggle" type="button"
-              onclick="this.classList.toggle('open'); document.getElementById('inquiryDetail<?php echo $index; ?>').classList.toggle('open')">
-              <div class="customer-inquiry-header">
-                <strong><?php echo htmlspecialchars($inq['reference']); ?></strong>
-                <span class="status-badge <?php echo $statusInfo['class']; ?>">
-                  <?php echo $statusInfo['label']; ?>
-                </span>
+            <article class="customer-inquiry-item account-inquiry-item">
+              <button class="account-inquiry-toggle" type="button"
+                onclick="this.classList.toggle('open'); document.getElementById('inquiryDetail<?php echo $index; ?>').classList.toggle('open')">
+                <div class="customer-inquiry-header">
+                  <strong><?php echo htmlspecialchars($inq['reference']); ?></strong>
+                  <span class="status-badge <?php echo $statusInfo['class']; ?>">
+                    <?php echo $statusInfo['label']; ?>
+                  </span>
+                </div>
+                <div class="customer-inquiry-meta">
+                  <?php echo htmlspecialchars($inq['created_at']); ?> |
+                  <?php echo htmlspecialchars($inq['event_type']); ?> |
+                  <?php echo htmlspecialchars($inq['venue_name'] ?? 'No venue'); ?>
+                </div>
+                <div class="customer-inquiry-meta">
+                  <?php echo htmlspecialchars($inq['package_name'] ?? 'No package'); ?> |
+                  <?php echo (int)$inq['requested_rooms']; ?> room(s) |
+                  <?php echo $total; ?>
+                </div>
+              </button>
+              <div class="account-inquiry-details" id="inquiryDetail<?php echo $index; ?>">
+                <div class="summary-item">
+                  <label>Preferred Date</label>
+                  <span><?php echo htmlspecialchars($inq['preferred_date'] ?? 'Not set'); ?></span>
+                </div>
+                <div class="summary-item">
+                  <label>Backup Date</label>
+                  <span><?php echo htmlspecialchars($inq['backup_date'] ?? 'Not set'); ?></span>
+                </div>
+                <div class="summary-item">
+                  <label>Amenities</label>
+                  <span><?php echo htmlspecialchars($amenityList); ?></span>
+                </div>
+                <div class="summary-item">
+                  <label>Notes</label>
+                  <span><?php echo htmlspecialchars($inq['notes'] ?? 'No notes provided.'); ?></span>
+                </div>
               </div>
-              <div class="customer-inquiry-meta">
-                <?php echo htmlspecialchars($inq['created_at']); ?> |
-                <?php echo htmlspecialchars($inq['event_type']); ?> |
-                <?php echo htmlspecialchars($inq['venue_name'] ?? 'No venue'); ?>
-              </div>
-              <div class="customer-inquiry-meta">
-                <?php echo htmlspecialchars($inq['package_name'] ?? 'No package'); ?> |
-                <?php echo (int)$inq['requested_rooms']; ?> room(s) |
-                <?php echo $total; ?>
-              </div>
-            </button>
-            <div class="account-inquiry-details" id="inquiryDetail<?php echo $index; ?>">
-              <div class="summary-item">
-                <label>Preferred Date</label>
-                <span><?php echo htmlspecialchars($inq['preferred_date'] ?? 'Not set'); ?></span>
-              </div>
-              <div class="summary-item">
-                <label>Backup Date</label>
-                <span><?php echo htmlspecialchars($inq['backup_date'] ?? 'Not set'); ?></span>
-              </div>
-              <div class="summary-item">
-                <label>Amenities</label>
-                <span><?php echo htmlspecialchars($amenityList); ?></span>
-              </div>
-              <div class="summary-item">
-                <label>Notes</label>
-                <span><?php echo htmlspecialchars($inq['notes'] ?? 'No notes provided.'); ?></span>
-              </div>
-            </div>
-          </article>
+            </article>
           <?php endforeach; ?>
         <?php endif; ?>
       </div>
@@ -521,7 +533,9 @@ function profileInitials(array $user): string {
     // Delete account — calls backend
     document.getElementById('deleteAccountBtn').addEventListener('click', () => {
       if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
-      fetch('actions/delete_account.php', { method: 'POST' })
+      fetch('actions/delete_account.php', {
+          method: 'POST'
+        })
         .then(res => res.json())
         .then(data => {
           if (data.success) window.location.href = data.redirect;
@@ -531,4 +545,5 @@ function profileInitials(array $user): string {
     });
   </script>
 </body>
+
 </html>

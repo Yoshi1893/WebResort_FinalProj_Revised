@@ -101,6 +101,14 @@ if ($packagesTableExists && $has('package_id')) {
             $stmt->execute([$packageName]);
             $packageId = $stmt->fetchColumn() ?: null;
         }
+        // TEMP DEBUG
+        file_put_contents(
+            __DIR__ . '/debug.txt',
+            "packageKey: $packageKey\npackageName: $packageName\npackageId: " . var_export($packageId, true),
+            FILE_APPEND
+        );
+
+        error_log("packageName: $packageName | packageKey: $packageKey | resolved packageId: " . var_export($packageId, true));
     } catch (Throwable $e) {
         $packageId = null;
     }
