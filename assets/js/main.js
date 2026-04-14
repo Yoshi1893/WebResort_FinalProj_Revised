@@ -1,6 +1,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const PACKAGE_DATA = window.MockStore?.getPackageData() || {};
+  const SESSION_USER = window.AppSessionUser || null;
   let currentStep = 1;
   let isSyncingEstimate = false;
   const wizardState = { venue: 'Pearl Ballroom' };
@@ -47,7 +48,23 @@
   function updateAuthNote() {
     const note = $('wizardAuthNote');
     if (!note) return;
+    if (SESSION_USER?.isLoggedIn) {
+      note.textContent = `Signed in as ${SESSION_USER.firstName || 'User'} ${SESSION_USER.lastName || ''}. You can submit this inquiry now.`.trim();
+      return;
+    }
     note.textContent = 'Sign in through the login page before sending this inquiry.';
+  }
+
+  function prefillWizardUserFields() {
+    if (!SESSION_USER?.isLoggedIn) return;
+    const first = $('wizFirst');
+    const last = $('wizLast');
+    const email = $('wizEmail');
+    const phone = $('wizPhone');
+    if (first && !first.value.trim()) first.value = SESSION_USER.firstName || '';
+    if (last && !last.value.trim()) last.value = SESSION_USER.lastName || '';
+    if (email && !email.value.trim()) email.value = SESSION_USER.email || '';
+    if (phone && !phone.value.trim()) phone.value = SESSION_USER.phone || '';
   }
 
   function setPackageCardState(key) {
@@ -169,9 +186,11 @@
 
   function getDraftInquiryData() {
     captureWizardState();
+    const packageKey = $('wizPackage').value;
     const addOns = getSelectedWizardAddOns();
-    const estimate = calculateEstimate($('wizPackage').value, addOns);
+    const estimate = calculateEstimate(packageKey, addOns);
     return {
+      packageKey,
       event: $('wizEvent').value,
       venue: wizardState.venue,
       preferredDate: $('wizPreferredDate').value || 'Not set',
@@ -245,6 +264,56 @@
   }
 
   function submitInquiry() {
+    if (SESSION_USER?.isLoggedIn) {
+      const first = $('wizFirst').value.trim();
+      const last = $('wizLast').value.trim();
+      const email = $('wizEmail').value.trim();
+      const phone = $('wizPhone').value.trim();
+
+      if (!first || !last || !email || !phone) {
+        showToast('Please complete all contact fields before submitting.', '#c0392b');
+        return;
+      }
+
+      const draft = getDraftInquiryData();
+      fetch('assets/actions/submit_inquiry.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: draft.event,
+          venue: draft.venue,
+          packageKey: draft.packageKey,
+          preferredDate: draft.preferredDate,
+          backupDate: draft.backupDate,
+          packageName: draft.packageName,
+          requestedRooms: 0,
+          estimatedTotal: draft.estimate.total,
+          notes: $('wizNotes').value.trim(),
+          addOns: draft.addOns,
+          contact: { first, last, email, phone }
+        })
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.success) {
+            showToast(data.message || 'Failed to submit inquiry.', '#c0392b');
+            return;
+          }
+          const params = new URLSearchParams({
+            ref: data.reference || `INQ-${Date.now()}`,
+            package: data.package || draft.packageName,
+            rooms: data.rooms || 'N/A',
+            amenities: data.amenities || (draft.addOns.length ? draft.addOns.join(', ') : 'None'),
+            total: data.total || formatCurrency(draft.estimate.total)
+          });
+          showToast('Inquiry submitted successfully. Redirecting...');
+          setTimeout(() => { window.location.href = `inquiry-success.php?${params.toString()}`; }, 800);
+        })
+        .catch(() => {
+          showToast('Could not submit inquiry to server.', '#c0392b');
+        });
+      return;
+    }
     showToast('Sign in on the login page before sending your inquiry.', '#c0392b');
     setTimeout(() => { window.location.href = 'login.php'; }, 800);
   }
@@ -384,6 +453,7 @@
     $('wizSubmit').onclick = submitInquiry;
     updateCalculator();
     $('wizGuests').value = '';
+    prefillWizardUserFields();
     updateAuthNote();
     goToStep(1);
   }

@@ -29,7 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, phone, password, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
             if ($stmt->execute([$first_name, $last_name, $email, $phone, $hashed_password])) {
-                $success = 'Registration successful! <a href="login.php">Login now</a>.';
+                $newUserId = (int) $pdo->lastInsertId();
+                $_SESSION['user_id'] = $newUserId;
+                $_SESSION['user_name'] = $first_name . ' ' . $last_name;
+                $_SESSION['user_email'] = $email;
+                $_SESSION['user_role'] = 'customer';
+                $success = 'Registration successful! Redirecting to dashboard...';
+                header('Refresh: 1.5; url=index.php');
             } else {
                 $error = 'Registration failed. Try again.';
             }

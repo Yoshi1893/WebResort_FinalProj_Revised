@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
                 if ($user['role'] === 'admin') {
                     header('Refresh: 1.5; url=admin.php');
                 } else {
-                    header('Refresh: 1.5; url=account.php');
+                    header('Refresh: 1.5; url=index.php');
                 }
             }
         } else {
