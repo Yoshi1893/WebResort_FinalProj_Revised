@@ -21,11 +21,40 @@ function resolveProfileImageColumn(PDO $pdo): ?string
   return null;
 }
 
+function extractInquiryLabelFromNotes(?string $notes, string $label): ?string
+{
+  $text = trim((string) $notes);
+  if ($text === '') {
+    return null;
+  }
+
+  $safeLabel = preg_quote($label, '/');
+  if (preg_match('/(?:^|[|\\n\\r])\\s*' . $safeLabel . '\\s*:\\s*([^|\\n\\r]+)/i', $text, $matches)) {
+    $value = trim((string) ($matches[1] ?? ''));
+    return $value !== '' ? $value : null;
+  }
+
+  return null;
+}
+
+function stripInquiryContextFromNotes(?string $notes): string
+{
+  $text = trim((string) $notes);
+  if ($text === '') {
+    return '';
+  }
+
+  $clean = preg_replace('/\s*\|?\s*Event:\s*[^|]*\|\s*Venue:\s*[^|]*\|\s*Package:\s*[^|]*\s*$/i', '', $text);
+  return trim((string) ($clean ?? $text));
+}
+
 $profileImageColumn = $pdo ? resolveProfileImageColumn($pdo) : null;
 
 // Pull fresh user data from DB using session
 $currentUser = null;
 $userInquiries = [];
+$inquiryActionSuccess = '';
+$inquiryActionError = '';
 
 if ($pdo && !empty($_SESSION['user_id'])) {
   // Fetch user profile
@@ -38,30 +67,137 @@ if ($pdo && !empty($_SESSION['user_id'])) {
   $stmt->execute([$_SESSION['user_id']]);
   $currentUser = $stmt->fetch();
 
-  // Fetch inquiries from whichever schema is currently available.
+  // Allow users to cancel their own active inquiries from account history.
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'cancel_inquiry') {
+    $inquiryId = (int) ($_POST['inquiry_id'] ?? 0);
+    if ($inquiryId <= 0) {
+      $inquiryActionError = 'Invalid inquiry selected.';
+    } else {
+      try {
+        $colNames = [];
+        $colStmt = $pdo->query('SHOW COLUMNS FROM inquiries');
+        foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
+          $colNames[] = strtolower((string) ($col['Field'] ?? ''));
+        }
+
+        if (!in_array('status', $colNames, true)) {
+          $inquiryActionError = 'Inquiry status updates are not available in this schema.';
+        } else {
+          $whereSql = 'id = ?';
+          $params = [$inquiryId];
+
+          if (in_array('user_id', $colNames, true)) {
+            $whereSql .= ' AND user_id = ?';
+            $params[] = (int) $_SESSION['user_id'];
+          } elseif (in_array('email', $colNames, true) && !empty($currentUser['email'])) {
+            $whereSql .= ' AND email = ?';
+            $params[] = (string) $currentUser['email'];
+          }
+
+          $stmt = $pdo->prepare("UPDATE inquiries SET status = 'closed' WHERE {$whereSql} AND status <> 'closed'");
+          $stmt->execute($params);
+
+          if ($stmt->rowCount() > 0) {
+            $inquiryActionSuccess = 'Inquiry cancelled successfully.';
+          } else {
+            $inquiryActionError = 'Inquiry not found or already closed.';
+          }
+        }
+      } catch (Throwable $e) {
+        $inquiryActionError = 'Failed to cancel inquiry.';
+      }
+    }
+  }
+
+  // Fetch inquiries using schema-aware fallbacks for package/venue labels.
   try {
-    $stmt = $pdo->prepare("
+    $inquiryColumns = [];
+    $colStmt = $pdo->query('SHOW COLUMNS FROM inquiries');
+    foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
+      $inquiryColumns[] = strtolower((string) ($col['Field'] ?? ''));
+    }
+
+    $hasInquiryCol = static function (string $name) use ($inquiryColumns): bool {
+      return in_array(strtolower($name), $inquiryColumns, true);
+    };
+
+    $hasTable = static function (PDO $pdoRef, string $table): bool {
+      try {
+        $stmt = $pdoRef->prepare('SHOW TABLES LIKE ?');
+        $stmt->execute([$table]);
+        return (bool) $stmt->fetchColumn();
+      } catch (Throwable $e) {
+        return false;
+      }
+    };
+
+    $tableColumns = static function (PDO $pdoRef, string $table): array {
+      $result = [];
+      try {
+        $stmt = $pdoRef->query('SHOW COLUMNS FROM ' . $table);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
+          $result[] = strtolower((string) ($col['Field'] ?? ''));
+        }
+      } catch (Throwable $e) {
+        return [];
+      }
+      return $result;
+    };
+
+    $referenceExpr = $hasInquiryCol('reference')
+      ? 'i.reference'
+      : "CONCAT('INQ-', DATE_FORMAT(COALESCE(i.created_at, NOW()), '%Y%m%d'), '-', LPAD(i.id, 5, '0'))";
+    $eventExpr = $hasInquiryCol('event_type') ? 'i.event_type' : "'Not specified'";
+    $preferredExpr = $hasInquiryCol('preferred_date') ? 'i.preferred_date' : ($hasInquiryCol('event_date') ? 'i.event_date' : 'NULL');
+    $backupExpr = $hasInquiryCol('backup_date') ? 'i.backup_date' : 'NULL';
+    $roomsExpr = $hasInquiryCol('requested_rooms') ? 'i.requested_rooms' : '0';
+    $totalExpr = $hasInquiryCol('estimated_total') ? 'i.estimated_total' : '0';
+    $notesExpr = $hasInquiryCol('notes') ? 'i.notes' : ($hasInquiryCol('message') ? 'i.message' : "''");
+    $amenitiesExpr = $hasInquiryCol('amenities') ? 'i.amenities' : "''";
+    $messageExpr = $hasInquiryCol('message') ? 'i.message' : "''";
+    $statusExpr = $hasInquiryCol('status') ? 'i.status' : "'submitted'";
+    $createdExpr = $hasInquiryCol('created_at') ? 'i.created_at' : 'NOW()';
+    $joins = [];
+    if ($hasInquiryCol('venue_id')) {
+      $joins[] = 'LEFT JOIN venues v ON v.id = i.venue_id';
+    }
+    if ($hasInquiryCol('package_id')) {
+      $joins[] = 'LEFT JOIN packages p ON p.id = i.package_id';
+    }
+    if ($hasInquiryCol('package_key')) {
+      $joins[] = 'LEFT JOIN packages pk ON pk.package_key = i.package_key';
+    }
+
+    $baseSelect = "
         SELECT
           i.id,
-          i.reference,
-          i.event_type,
-          i.preferred_date,
-          i.backup_date,
-          i.requested_rooms,
-          i.estimated_total,
-          i.notes,
-          i.status,
-          i.created_at,
+          {$referenceExpr} AS reference,
+          {$eventExpr} AS event_type,
+          {$preferredExpr} AS preferred_date,
+          {$backupExpr} AS backup_date,
+          {$roomsExpr} AS requested_rooms,
+          {$totalExpr} AS estimated_total,
+          {$notesExpr} AS notes,
+          {$amenitiesExpr} AS amenities_text,
+          {$messageExpr} AS message_text,
+          {$statusExpr} AS status,
+          {$createdExpr} AS created_at,
           v.name AS venue_name,
-          p.name AS package_name
+          COALESCE(p.name, pk.name) AS package_name
         FROM inquiries i
-        LEFT JOIN venues   v ON v.id = i.venue_id
-        LEFT JOIN packages p ON p.id = i.package_id
-        WHERE i.user_id = ?
-        ORDER BY i.created_at DESC
-      ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $userInquiries = $stmt->fetchAll();
+        " . implode("\n", $joins);
+
+    if ($hasInquiryCol('user_id')) {
+      $stmt = $pdo->prepare($baseSelect . " WHERE i.user_id = ? ORDER BY {$createdExpr} DESC, i.id DESC");
+      $stmt->execute([$_SESSION['user_id']]);
+      $userInquiries = $stmt->fetchAll();
+    }
+
+    if (empty($userInquiries) && $hasInquiryCol('email') && !empty($currentUser['email'])) {
+      $stmt = $pdo->prepare($baseSelect . " WHERE i.email = ? ORDER BY {$createdExpr} DESC, i.id DESC");
+      $stmt->execute([(string) $currentUser['email']]);
+      $userInquiries = $stmt->fetchAll();
+    }
     // echo '<pre>';
     // echo 'Session user_id: ' . $_SESSION['user_id'] . "\n";
     // echo 'Inquiries found: ' . count($userInquiries) . "\n";
@@ -96,10 +232,12 @@ if ($pdo && !empty($_SESSION['user_id'])) {
       $notesExpr = $hasInquiryCol('notes')
         ? 'notes'
         : ($hasInquiryCol('message') ? 'message' : "''");
+      $messageExpr = $hasInquiryCol('message') ? 'message' : "''";
       $statusExpr = $hasInquiryCol('status') ? 'status' : "'submitted'";
       $createdAtExpr = $hasInquiryCol('created_at') ? 'created_at' : 'NOW()';
       $roomsExpr = $hasInquiryCol('requested_rooms') ? 'requested_rooms' : '0';
       $totalExpr = $hasInquiryCol('estimated_total') ? 'estimated_total' : '0';
+        $amenitiesExpr = $hasInquiryCol('amenities') ? 'amenities' : "''";
 
       $baseSelect = "
           SELECT
@@ -111,6 +249,8 @@ if ($pdo && !empty($_SESSION['user_id'])) {
             {$roomsExpr} AS requested_rooms,
             {$totalExpr} AS estimated_total,
             {$notesExpr} AS notes,
+            {$amenitiesExpr} AS amenities_text,
+            {$messageExpr} AS message_text,
             {$statusExpr} AS status,
             {$createdAtExpr} AS created_at,
             NULL AS venue_name,
@@ -136,17 +276,82 @@ if ($pdo && !empty($_SESSION['user_id'])) {
 
   // Amenities are optional and may not exist in all schemas.
   try {
-    $amenityStmt = $pdo->prepare("\
-        SELECT a.name
+    $hasTable = static function (PDO $pdoRef, string $table): bool {
+      try {
+        $stmt = $pdoRef->prepare('SHOW TABLES LIKE ?');
+        $stmt->execute([$table]);
+        return (bool) $stmt->fetchColumn();
+      } catch (Throwable $e) {
+        return false;
+      }
+    };
+
+    $tableColumns = static function (PDO $pdoRef, string $table): array {
+      $result = [];
+      try {
+        $stmt = $pdoRef->query('SHOW COLUMNS FROM ' . $table);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
+          $result[] = strtolower((string) ($col['Field'] ?? ''));
+        }
+      } catch (Throwable $e) {
+        return [];
+      }
+      return $result;
+    };
+
+    $pickFirst = static function (array $columns, array $candidates): ?string {
+      foreach ($candidates as $candidate) {
+        if (in_array(strtolower($candidate), $columns, true)) {
+          return $candidate;
+        }
+      }
+      return null;
+    };
+
+    $iaExists = $hasTable($pdo, 'inquiry_amenities');
+    $amenitiesExists = $hasTable($pdo, 'amenities');
+    $iaCols = $iaExists ? $tableColumns($pdo, 'inquiry_amenities') : [];
+    $amenityCols = $amenitiesExists ? $tableColumns($pdo, 'amenities') : [];
+
+    $iaInquiryCol = $pickFirst($iaCols, ['inquiry_id', 'inquiryid']);
+    $iaAmenityCol = $pickFirst($iaCols, ['amenity_id', 'amenityid']);
+    $amenityIdCol = $pickFirst($amenityCols, ['id', 'amenity_id']);
+    $amenityNameCol = $pickFirst($amenityCols, ['name', 'title', 'amenity_name', 'label']);
+
+    if ($iaExists && $amenitiesExists && $iaInquiryCol && $iaAmenityCol && $amenityIdCol && $amenityNameCol) {
+      $amenityStmt = $pdo->prepare("\
+        SELECT a.`{$amenityNameCol}`
         FROM inquiry_amenities ia
-        JOIN amenities a ON a.id = ia.amenity_id
-        WHERE ia.inquiry_id = ?
+        JOIN amenities a ON a.`{$amenityIdCol}` = ia.`{$iaAmenityCol}`
+        WHERE ia.`{$iaInquiryCol}` = ?
       ");
-    foreach ($userInquiries as &$inq) {
-      $amenityStmt->execute([$inq['id']]);
-      $inq['amenities'] = $amenityStmt->fetchAll(PDO::FETCH_COLUMN);
+
+      foreach ($userInquiries as &$inq) {
+        $amenityStmt->execute([(int) ($inq['id'] ?? 0)]);
+        $linkedAmenities = array_values(array_filter(array_map('strval', $amenityStmt->fetchAll(PDO::FETCH_COLUMN))));
+        if (!empty($linkedAmenities)) {
+          $inq['amenities'] = $linkedAmenities;
+        } else {
+          $textAmenities = trim((string) ($inq['amenities_text'] ?? ''));
+          if ($textAmenities !== '') {
+            $inq['amenities'] = array_values(array_filter(array_map('trim', explode(',', $textAmenities))));
+          } else {
+            $inq['amenities'] = [];
+          }
+        }
+      }
+      unset($inq);
+    } else {
+      foreach ($userInquiries as &$inq) {
+        if (!isset($inq['amenities'])) {
+          $textAmenities = trim((string) ($inq['amenities_text'] ?? ''));
+          $inq['amenities'] = $textAmenities !== ''
+            ? array_values(array_filter(array_map('trim', explode(',', $textAmenities))))
+            : [];
+        }
+      }
+      unset($inq);
     }
-    unset($inq);
   } catch (Throwable $e) {
     foreach ($userInquiries as &$inq) {
       if (!isset($inq['amenities'])) {
@@ -462,6 +667,13 @@ function profileInitials(array $user): string
       <div class="cust-card-title">Inquiry History</div>
       <div class="cust-card-sub">Your submitted inquiries</div>
 
+      <?php if ($inquiryActionSuccess): ?>
+        <div class="auth-feedback auth-feedback-success"><?php echo htmlspecialchars($inquiryActionSuccess); ?></div>
+      <?php endif; ?>
+      <?php if ($inquiryActionError): ?>
+        <div class="auth-feedback auth-feedback-error"><?php echo htmlspecialchars($inquiryActionError); ?></div>
+      <?php endif; ?>
+
       <div class="customer-inquiry-list account-inquiry-list">
         <?php if (empty($userInquiries)): ?>
           <p class="customer-empty-state">No inquiries submitted yet.</p>
@@ -470,6 +682,16 @@ function profileInitials(array $user): string
             $statusInfo = inquiryStatusInfo($inq['status']);
             $amenityList = !empty($inq['amenities']) ? implode(', ', $inq['amenities']) : 'None';
             $total = 'PHP ' . number_format($inq['estimated_total'], 0, '.', ',');
+            $displayNotes = stripInquiryContextFromNotes($inq['notes'] ?? '');
+            $fallbackSource = trim((string) (($inq['notes'] ?? '') . ' | ' . ($inq['message_text'] ?? '')));
+            $resolvedVenueName = trim((string) ($inq['venue_name'] ?? ''));
+            if ($resolvedVenueName === '') {
+              $resolvedVenueName = extractInquiryLabelFromNotes($fallbackSource, 'Venue') ?? '';
+            }
+            $resolvedPackageName = trim((string) ($inq['package_name'] ?? ''));
+            if ($resolvedPackageName === '') {
+              $resolvedPackageName = extractInquiryLabelFromNotes($fallbackSource, 'Package') ?? '';
+            }
           ?>
             <article class="customer-inquiry-item account-inquiry-item">
               <button class="account-inquiry-toggle" type="button"
@@ -483,14 +705,22 @@ function profileInitials(array $user): string
                 <div class="customer-inquiry-meta">
                   <?php echo htmlspecialchars($inq['created_at']); ?> |
                   <?php echo htmlspecialchars($inq['event_type']); ?> |
-                  <?php echo htmlspecialchars($inq['venue_name'] ?? 'No venue'); ?>
+                  <?php echo htmlspecialchars($resolvedVenueName !== '' ? $resolvedVenueName : 'No venue'); ?>
                 </div>
                 <div class="customer-inquiry-meta">
-                  <?php echo htmlspecialchars($inq['package_name'] ?? 'No package'); ?> |
-                  <?php echo (int)$inq['requested_rooms']; ?> room(s) |
+                  <?php echo htmlspecialchars($resolvedPackageName !== '' ? $resolvedPackageName : 'No package'); ?> |
                   <?php echo $total; ?>
                 </div>
               </button>
+              <?php if (($inq['status'] ?? '') !== 'closed'): ?>
+                <div class="account-inquiry-actions">
+                  <form method="POST" onsubmit="return confirm('Cancel this inquiry?');">
+                    <input type="hidden" name="action" value="cancel_inquiry">
+                    <input type="hidden" name="inquiry_id" value="<?php echo (int) ($inq['id'] ?? 0); ?>">
+                    <button class="btn-outline" type="submit">Cancel Inquiry</button>
+                  </form>
+                </div>
+              <?php endif; ?>
               <div class="account-inquiry-details" id="inquiryDetail<?php echo $index; ?>">
                 <div class="summary-item">
                   <label>Preferred Date</label>
@@ -506,7 +736,7 @@ function profileInitials(array $user): string
                 </div>
                 <div class="summary-item">
                   <label>Notes</label>
-                  <span><?php echo htmlspecialchars($inq['notes'] ?? 'No notes provided.'); ?></span>
+                  <span><?php echo htmlspecialchars($displayNotes !== '' ? $displayNotes : 'No notes provided.'); ?></span>
                 </div>
               </div>
             </article>

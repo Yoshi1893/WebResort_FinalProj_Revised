@@ -30,6 +30,26 @@ CREATE TABLE IF NOT EXISTS `inquiries` (
   KEY `created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Compatibility migration for frontend venue capacity support
+SET @has_venues := (
+  SELECT COUNT(*)
+  FROM information_schema.tables
+  WHERE table_schema = DATABASE() AND table_name = 'venues'
+);
+SET @has_guest_capacity := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'venues' AND column_name = 'guest_capacity'
+);
+SET @venue_capacity_sql := IF(
+  @has_venues = 1 AND @has_guest_capacity = 0,
+  'ALTER TABLE `venues` ADD COLUMN `guest_capacity` int(11) NOT NULL DEFAULT 0 AFTER `description`',
+  'SELECT 1'
+);
+PREPARE venue_capacity_stmt FROM @venue_capacity_sql;
+EXECUTE venue_capacity_stmt;
+DEALLOCATE PREPARE venue_capacity_stmt;
+
 -- Sample data
 INSERT INTO `users` (`first_name`, `last_name`, `email`, `phone`, `password`, `role`, `status`) VALUES
 ('Test', 'User', 'test@example.com', '+639171234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'customer', 'active'); -- password: password

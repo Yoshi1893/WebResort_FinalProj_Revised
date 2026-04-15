@@ -1,7 +1,7 @@
 <?php
 $reference = trim($_GET['ref'] ?? 'INQ-20260409-00001');
 $package = trim($_GET['package'] ?? 'Ripple Pack');
-$rooms = trim($_GET['rooms'] ?? '2');
+$venue = trim($_GET['venue'] ?? 'Pearl Ballroom');
 $amenities = trim($_GET['amenities'] ?? 'Extra Event Hour, Flower Wall Backdrop');
 $total = trim($_GET['total'] ?? 'PHP 57,000');
 ?>
@@ -41,8 +41,8 @@ $total = trim($_GET['total'] ?? 'PHP 57,000');
           <strong><?php echo htmlspecialchars($package); ?></strong>
         </div>
         <div class="success-item">
-          <span>Requested Rooms</span>
-          <strong><?php echo htmlspecialchars($rooms); ?></strong>
+          <span>Selected Venue</span>
+          <strong><?php echo htmlspecialchars($venue); ?></strong>
         </div>
         <div class="success-item success-item-wide">
           <span>Selected Amenities</span>

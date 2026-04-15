@@ -27,14 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
     if (empty($email) || empty($password)) {
         $error = 'Email and password required.';
     } else {
-        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, password, role, status FROM users WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, password, role, status, archived FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            if ($user['status'] === 'revoked') {
+            $status = strtolower((string) ($user['status'] ?? 'active'));
+            $isArchived = (int) ($user['archived'] ?? 0) === 1;
+
+            if ($status === 'revoked' || $isArchived) {
                 $error = 'Your account access has been revoked. Please contact support.';
-            } elseif ($user['status'] === 'deleted') {
+            } elseif ($status === 'deleted') {
                 $error = 'This account has been deleted.';
             } else {
                 $_SESSION['user_id']    = $user['id'];

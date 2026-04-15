@@ -31,7 +31,7 @@ if ($pdo) checkAdminAccess($pdo);
   <main class="admin-body">
     <section class="panel-welcome">
       <h2>Admin <em>Workspace</em></h2>
-      <p>Manage frontend-ready package pricing, amenities, venues, rooms, users, and inquiry logs from one page.</p>
+      <p>Manage frontend-ready package pricing, amenities, users, and inquiry logs from one page.</p>
     </section>
 
     <section class="admin-stats-row">
@@ -44,26 +44,27 @@ if ($pdo) checkAdminAccess($pdo);
     <section class="admin-management-grid">
       <article class="cust-card admin-manage-card">
         <div class="cust-card-title">Packages</div>
-        <div class="cust-card-sub">Edit package pricing, guest limits, and room allowance</div>
+        <div class="cust-card-sub">Edit existing package pricing, guest limits, and room allowance</div>
+        <div class="admin-edit-note">Click <strong>Edit</strong> on a package row to load it into this form.</div>
         <form class="admin-form" id="packageForm">
           <input type="hidden" id="packageId">
           <div class="form-row">
-            <div class="form-group"><label for="packageName">Package Name</label><input type="text" id="packageName" required></div>
-            <div class="form-group"><label for="packageBasePrice">Base Price</label><input type="number" id="packageBasePrice" required></div>
+            <div class="form-group"><label for="packageName">Package Name</label><input type="text" id="packageName" required disabled></div>
+            <div class="form-group"><label for="packageBasePrice">Base Price</label><input type="number" id="packageBasePrice" required disabled></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label for="packageGuestCapacity">Guest Capacity</label><input type="number" id="packageGuestCapacity" required></div>
-            <div class="form-group"><label for="packageRoomLimit">Max Private Rooms</label><input type="number" id="packageRoomLimit" required></div>
+            <div class="form-group"><label for="packageGuestCapacity">Guest Capacity</label><input type="number" id="packageGuestCapacity" required disabled></div>
+            <div class="form-group"><label for="packageRoomLimit">Max Private Rooms</label><input type="number" id="packageRoomLimit" required disabled></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label for="packageTagline">Description / Tagline</label><input type="text" id="packageTagline" required></div>
-            <div class="form-group"><label for="packageActive">Status</label><select id="packageActive"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+            <div class="form-group"><label for="packageTagline">Description / Tagline</label><input type="text" id="packageTagline" required disabled></div>
+            <div class="form-group"><label for="packageActive">Status</label><select id="packageActive" disabled><option value="true">Active</option><option value="false">Inactive</option></select></div>
           </div>
-          <div class="admin-form-actions"><button class="auth-btn" type="submit">Save Package</button><button class="btn-outline" id="packageReset" type="button">Clear</button></div>
+          <div class="admin-form-actions"><button class="auth-btn" id="packageSubmit" type="submit" disabled>Update Package</button><button class="btn-outline" id="packageReset" type="button" disabled>Cancel Edit</button></div>
         </form>
         <div class="table-wrap admin-mini-table">
           <table class="data-table">
-            <thead><tr><th>Name</th><th>Price</th><th>Rooms</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Name</th><th>Price</th><th>Guests</th><th>Rooms</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="packageTableBody"></tbody>
           </table>
         </div>
@@ -71,17 +72,18 @@ if ($pdo) checkAdminAccess($pdo);
 
       <article class="cust-card admin-manage-card">
         <div class="cust-card-title">Amenities</div>
-        <div class="cust-card-sub">Manage add-on pricing shown to customers</div>
+        <div class="cust-card-sub">Edit existing add-on pricing shown to customers</div>
+        <div class="admin-edit-note">Click <strong>Edit</strong> on an amenity row to load it into this form.</div>
         <form class="admin-form" id="amenityForm">
           <input type="hidden" id="amenityId">
           <div class="form-row">
-            <div class="form-group"><label for="amenityName">Amenity Name</label><input type="text" id="amenityName" required></div>
-            <div class="form-group"><label for="amenityPrice">Price</label><input type="number" id="amenityPrice" required></div>
+            <div class="form-group"><label for="amenityName">Amenity Name</label><input type="text" id="amenityName" required disabled></div>
+            <div class="form-group"><label for="amenityPrice">Price</label><input type="number" id="amenityPrice" required disabled></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label for="amenityActive">Status</label><select id="amenityActive"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+            <div class="form-group"><label for="amenityActive">Status</label><select id="amenityActive" disabled><option value="true">Active</option><option value="false">Inactive</option></select></div>
           </div>
-          <div class="admin-form-actions"><button class="auth-btn" type="submit">Save Amenity</button><button class="btn-outline" id="amenityReset" type="button">Clear</button></div>
+          <div class="admin-form-actions"><button class="auth-btn" id="amenitySubmit" type="submit" disabled>Update Amenity</button><button class="btn-outline" id="amenityReset" type="button" disabled>Cancel Edit</button></div>
         </form>
         <div class="table-wrap admin-mini-table">
           <table class="data-table">
@@ -95,39 +97,24 @@ if ($pdo) checkAdminAccess($pdo);
     <section class="admin-management-grid">
       <article class="cust-card admin-manage-card">
         <div class="cust-card-title">Venues</div>
-        <div class="cust-card-sub">Control which venues appear in the inquiry flow</div>
+        <div class="cust-card-sub">Edit existing venue details used in inquiry mapping</div>
+        <div class="admin-edit-note">Click <strong>Edit</strong> on a venue row to load it into this form.</div>
         <form class="admin-form" id="venueForm">
           <input type="hidden" id="venueId">
-          <div class="form-group"><label for="venueName">Venue Name</label><input type="text" id="venueName" required></div>
-          <div class="form-group"><label for="venueDescription">Short Description</label><input type="text" id="venueDescription" required></div>
-          <div class="form-group"><label for="venueActive">Status</label><select id="venueActive"><option value="true">Active</option><option value="false">Inactive</option></select></div>
-          <div class="admin-form-actions"><button class="auth-btn" type="submit">Save Venue</button><button class="btn-outline" id="venueReset" type="button">Clear</button></div>
-        </form>
-        <div class="table-wrap admin-mini-table">
-          <table class="data-table">
-            <thead><tr><th>Venue</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="venueTableBody"></tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="cust-card admin-manage-card">
-        <div class="cust-card-title">Rooms</div>
-        <div class="cust-card-sub">Manage room inventory under each venue</div>
-        <form class="admin-form" id="roomForm">
-          <input type="hidden" id="roomId">
           <div class="form-row">
-            <div class="form-group"><label for="roomName">Room Name</label><input type="text" id="roomName" required></div>
-            <div class="form-group"><label for="roomVenue">Venue</label><select id="roomVenue"></select></div>
+            <div class="form-group"><label for="venueName">Venue Name</label><input type="text" id="venueName" required disabled></div>
+            <div class="form-group"><label for="venueDescription">Description</label><input type="text" id="venueDescription" disabled></div>
           </div>
-          <div class="form-group"><label for="roomNote">Short Note</label><input type="text" id="roomNote" required></div>
-          <div class="form-group"><label for="roomActive">Status</label><select id="roomActive"><option value="true">Active</option><option value="false">Inactive</option></select></div>
-          <div class="admin-form-actions"><button class="auth-btn" type="submit">Save Room</button><button class="btn-outline" id="roomReset" type="button">Clear</button></div>
+          <div class="form-row">
+            <div class="form-group"><label for="venueCapacity">Guest Capacity</label><input type="number" id="venueCapacity" min="0" step="1" disabled></div>
+            <div class="form-group"><label for="venueActive">Status</label><select id="venueActive" disabled><option value="true">Active</option><option value="false">Inactive</option></select></div>
+          </div>
+          <div class="admin-form-actions"><button class="auth-btn" id="venueSubmit" type="submit" disabled>Update Venue</button><button class="btn-outline" id="venueReset" type="button" disabled>Cancel Edit</button></div>
         </form>
         <div class="table-wrap admin-mini-table">
           <table class="data-table">
-            <thead><tr><th>Room</th><th>Venue</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="roomTableBody"></tbody>
+            <thead><tr><th>Venue</th><th>Description</th><th>Capacity</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="venueTableBody"></tbody>
           </table>
         </div>
       </article>
@@ -140,7 +127,7 @@ if ($pdo) checkAdminAccess($pdo);
         <select id="userRoleFilter"><option value="all">All Roles</option><option value="customer">Customer</option><option value="admin">Admin</option></select>
         <select id="userStatusFilter"><option value="all">All States</option><option value="active">Active</option><option value="revoked">Revoked</option><option value="deleted">Deleted</option></select>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap admin-inquiry-scroll">
         <table class="data-table">
           <thead><tr><th>User</th><th>Role</th><th>Phone</th><th>Status</th><th>Action</th></tr></thead>
           <tbody id="userTableBody"></tbody>
@@ -157,7 +144,7 @@ if ($pdo) checkAdminAccess($pdo);
         <select id="inquiryPackageFilter"><option value="all">All Packages</option><option value="ripple">Ripple Pack</option><option value="crest">Crest Pack</option><option value="sovereign">Sovereign Wave</option></select>
         <select id="inquirySort"><option value="desc">Newest First</option><option value="asc">Oldest First</option></select>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap admin-inquiry-scroll">
         <table class="data-table">
           <thead><tr><th>Reference</th><th>Client</th><th>Event</th><th>Package</th><th>Status</th><th>Action</th></tr></thead>
           <tbody id="inquiryTableBody"></tbody>

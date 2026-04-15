@@ -7,7 +7,7 @@ function checkUserAccess(PDO $pdo): void {
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT status, role FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT status, role, archived FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
 
@@ -17,13 +17,16 @@ function checkUserAccess(PDO $pdo): void {
         exit;
     }
 
-    if ($user['status'] === 'revoked') {
+    $status = strtolower((string) ($user['status'] ?? 'active'));
+    $isArchived = (int) ($user['archived'] ?? 0) === 1;
+
+    if ($status === 'revoked' || $isArchived) {
         session_destroy();
         header('Location: login.php?reason=revoked');
         exit;
     }
 
-    if ($user['status'] === 'deleted') {
+    if ($status === 'deleted') {
         session_destroy();
         header('Location: login.php?reason=deleted');
         exit;

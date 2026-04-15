@@ -773,12 +773,16 @@ section {
   grid-template-columns: repeat(3, 1fr);
   gap: 2px;
   background: var(--sage-light);
+  align-items: stretch;
 }
 .venue-card {
   background: var(--white);
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .venue-img {
   height: 320px;
@@ -800,6 +804,9 @@ section {
 .venue-info {
   padding: 32px 28px;
   text-align: left;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 .venue-tag {
   font-size: 9px;
@@ -823,11 +830,13 @@ section {
   margin-bottom: 20px;
 }
 .venue-meta {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+  row-gap: 8px;
   padding-top: 20px;
   border-top: 1px solid #eee;
+  margin-top: auto;
 }
 .venue-meta-item {
   font-size: 12px;
@@ -835,6 +844,9 @@ section {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  line-height: 1.4;
+  align-self: start;
 }
 .venue-overlay {
   position: absolute;
@@ -2038,6 +2050,8 @@ footer {
   font-family: "Cormorant Garamond", serif;
   font-size: 54px;
   color: var(--gold-light);
+  line-height: 1;
+  margin-top: 0;
   margin-bottom: 10px;
 }
 .total-sub {
@@ -2952,6 +2966,37 @@ footer {
   background: #fcfaf6;
 }
 
+.account-inquiry-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 24px 14px;
+  background: #fff;
+}
+
+.account-inquiry-toggle.open + .account-inquiry-actions {
+  background: #fcfaf6;
+}
+
+.account-inquiry-actions form {
+  margin: 0;
+}
+
+.account-inquiry-actions .btn-outline {
+  padding: 8px 14px;
+  font-size: 12px;
+  min-height: 36px;
+  color: var(--sage-dark);
+  border: 1px solid rgba(78, 94, 69, 0.45);
+  background: #fff;
+  letter-spacing: 1.3px;
+}
+
+.account-inquiry-actions .btn-outline:hover {
+  background: #f4efe4;
+  color: var(--sage-dark);
+  transform: none;
+}
+
 .account-inquiry-details {
   display: none;
   padding: 0 24px 22px;
@@ -3046,23 +3091,29 @@ footer {
 .admin-body {
   width: min(100%, 1280px);
   margin: 0 auto;
+  padding: 20px 20px 30px;
 }
 
 .admin-body > section {
   width: min(100%, 1120px);
-  margin: 0 auto 36px;
+  padding: 0;
+  margin: 0 auto 14px;
+}
+
+.admin-body > section:last-child {
+  margin-bottom: 0;
 }
 
 .admin-management-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   margin-bottom: 0;
   align-items: start;
 }
 
 .admin-manage-card {
-  padding-bottom: 24px;
+  padding: 22px;
 }
 
 .admin-manage-card .cust-card-title,
@@ -3070,18 +3121,25 @@ footer {
   text-align: center;
 }
 
+.admin-edit-note {
+  font-size: 12px;
+  color: var(--text-light);
+  text-align: center;
+  margin: 4px 0 14px;
+}
+
 .admin-form {
-  margin-bottom: 22px;
+  margin-bottom: 12px;
 }
 
 .admin-form .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 10px;
 }
 
 .admin-form .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .admin-form .form-group label {
@@ -3097,7 +3155,7 @@ footer {
 .admin-form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 12px;
   justify-content: center;
   flex-wrap: wrap;
 }
@@ -3109,13 +3167,32 @@ footer {
 .admin-filter-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 8px;
   align-items: center;
+}
+
+.admin-stats-row {
+  margin-bottom: 12px;
+}
+
+.panel-welcome {
+  margin-bottom: 16px;
 }
 
 .admin-body .table-wrap {
   width: 100%;
+}
+
+.admin-inquiry-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.admin-inquiry-scroll .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .admin-filter-bar input,
@@ -3175,6 +3252,13 @@ footer {
   line-height: 36px;
   color: var(--dark);
   text-align: center;
+}
+
+.admin-form .form-group select option,
+.admin-filter-bar select option,
+.admin-status-select option {
+  background: #ffffff;
+  color: #1f1f1f;
 }
 
 .admin-muted {

@@ -35,7 +35,7 @@ CREATE TABLE `users` (
 
 CREATE TABLE `packages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `key` varchar(80) NOT NULL,
+  `package_key` varchar(80) NOT NULL,
   `name` varchar(150) NOT NULL,
   `base_price` decimal(12,2) NOT NULL DEFAULT 0.00,
   `guest_capacity` int(11) NOT NULL DEFAULT 0,
@@ -43,7 +43,7 @@ CREATE TABLE `packages` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `max_private_rooms` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_packages_key` (`key`),
+  UNIQUE KEY `uq_packages_package_key` (`package_key`),
   UNIQUE KEY `uq_packages_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -51,6 +51,7 @@ CREATE TABLE `venues` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(150) NOT NULL,
   `description` varchar(255) DEFAULT NULL,
+  `guest_capacity` int(11) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_venues_name` (`name`)
@@ -87,10 +88,14 @@ CREATE TABLE `inquiries` (
   `preferred_date` date DEFAULT NULL,
   `backup_date` date DEFAULT NULL,
   `package_id` int(11) DEFAULT NULL,
+  `package_key` varchar(80) DEFAULT NULL,
   `venue_id` int(11) DEFAULT NULL,
+  `guest_count` int(11) DEFAULT NULL,
+  `budget_range` varchar(120) DEFAULT NULL,
   `requested_rooms` int(11) NOT NULL DEFAULT 0,
   `estimated_total` decimal(12,2) NOT NULL DEFAULT 0.00,
   `notes` text DEFAULT NULL,
+  `amenities` text DEFAULT NULL,
   `status` enum('submitted','review','proposal','closed') NOT NULL DEFAULT 'submitted',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
@@ -98,9 +103,11 @@ CREATE TABLE `inquiries` (
   KEY `idx_inquiries_user_id` (`user_id`),
   KEY `idx_inquiries_email` (`email`),
   KEY `idx_inquiries_package_id` (`package_id`),
+  KEY `idx_inquiries_package_key` (`package_key`),
   KEY `idx_inquiries_venue_id` (`venue_id`),
   CONSTRAINT `fk_inquiries_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_inquiries_package` FOREIGN KEY (`package_id`) REFERENCES `packages` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_inquiries_package_key` FOREIGN KEY (`package_key`) REFERENCES `packages` (`package_key`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_inquiries_venue` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -131,15 +138,15 @@ INSERT INTO `users` (`id`, `first_name`, `last_name`, `email`, `phone`, `passwor
 (1, 'Admin', 'User', 'admin@9waves.com', '+63 917 111 0000', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, 0, 'active', '2026-04-01 00:00:00'),
 (2, 'Test', 'User', 'test@example.com', '+639171234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'customer', NULL, 0, 'active', '2026-04-08 00:00:00');
 
-INSERT INTO `packages` (`id`, `key`, `name`, `base_price`, `guest_capacity`, `tagline`, `active`, `max_private_rooms`) VALUES
+INSERT INTO `packages` (`id`, `package_key`, `name`, `base_price`, `guest_capacity`, `tagline`, `active`, `max_private_rooms`) VALUES
 (1, 'ripple', 'Ripple Pack', 45000.00, 100, 'Best for intimate celebrations', 1, 2),
 (2, 'crest', 'Crest Pack', 85000.00, 200, 'Ideal for mid-size signature events', 1, 5),
 (3, 'sovereign', 'Sovereign Wave', 150000.00, 500, 'Built for grand celebrations', 1, 8);
 
-INSERT INTO `venues` (`id`, `name`, `description`, `active`) VALUES
-(1, 'Pearl Ballroom', 'Grand indoor ballroom for large celebrations.', 1),
-(2, 'Wavecrest Garden', 'Open-air garden venue with sunset appeal.', 1),
-(3, 'Tidal Pool Terrace', 'Poolside venue for intimate gatherings.', 1);
+INSERT INTO `venues` (`id`, `name`, `description`, `guest_capacity`, `active`) VALUES
+(1, 'Pearl Ballroom', 'Grand indoor ballroom for large celebrations.', 500, 1),
+(2, 'Wavecrest Garden', 'Open-air garden venue with sunset appeal.', 300, 1),
+(3, 'Tidal Pool Terrace', 'Poolside venue for intimate gatherings.', 150, 1);
 
 INSERT INTO `rooms` (`id`, `venue_id`, `name`, `note`, `active`) VALUES
 (1, 1, 'Bridal Suite', 'Private prep room near ballroom entrance.', 1),
@@ -155,10 +162,10 @@ INSERT INTO `amenities` (`id`, `name`, `price`, `active`) VALUES
 (5, 'Flower Wall Backdrop', 10000.00, 1),
 (6, 'Overnight Accommodation', 25000.00, 0);
 
-INSERT INTO `inquiries` (`id`, `user_id`, `reference`, `full_name`, `email`, `event_type`, `event_date`, `preferred_date`, `backup_date`, `package_id`, `venue_id`, `requested_rooms`, `estimated_total`, `notes`, `status`, `created_at`) VALUES
-(1, 2, 'INQ-20260408-01201', 'Maria Santos', 'maria.santos@example.com', 'Wedding', '2026-06-12', '2026-06-12', '2026-06-19', 2, 1, 3, 107000.00, 'Would like a classic ballroom setup with ivory florals.', 'review', '2026-04-08 00:00:00'),
-(2, 2, 'INQ-20260410-01202', 'Maria Santos', 'maria.santos@example.com', 'Debut', '2026-08-02', '2026-08-02', '2026-08-09', 1, 2, 1, 53000.00, 'Sunset timing preferred for photos.', 'submitted', '2026-04-10 00:00:00'),
-(3, 2, 'INQ-20260412-01203', 'Paolo Reyes', 'paolo.reyes@example.com', 'Corporate Gala', '2026-09-18', '2026-09-18', '2026-09-25', 3, 1, 5, 190000.00, 'Needs stage projection and executive holding rooms.', 'proposal', '2026-04-12 00:00:00');
+INSERT INTO `inquiries` (`id`, `user_id`, `reference`, `full_name`, `email`, `event_type`, `event_date`, `preferred_date`, `backup_date`, `package_id`, `package_key`, `venue_id`, `guest_count`, `budget_range`, `requested_rooms`, `estimated_total`, `notes`, `amenities`, `status`, `created_at`) VALUES
+(1, 2, 'INQ-20260408-01201', 'Maria Santos', 'maria.santos@example.com', 'Wedding', '2026-06-12', '2026-06-12', '2026-06-19', 2, 'crest', 1, 200, 'PHP 75,000 - PHP 150,000', 3, 107000.00, 'Would like a classic ballroom setup with ivory florals.', 'Full Event Coordination, Flower Wall Backdrop', 'review', '2026-04-08 00:00:00'),
+(2, 2, 'INQ-20260410-01202', 'Maria Santos', 'maria.santos@example.com', 'Debut', '2026-08-02', '2026-08-02', '2026-08-09', 1, 'ripple', 2, 100, 'Under PHP 75,000', 1, 53000.00, 'Sunset timing preferred for photos.', '3-Tier Wedding Cake', 'submitted', '2026-04-10 00:00:00'),
+(3, 2, 'INQ-20260412-01203', 'Paolo Reyes', 'paolo.reyes@example.com', 'Corporate Gala', '2026-09-18', '2026-09-18', '2026-09-25', 3, 'sovereign', 1, 500, 'PHP 150,000 - PHP 250,000', 5, 190000.00, 'Needs stage projection and executive holding rooms.', 'Pro A/V Upgrade, Overnight Accommodation', 'proposal', '2026-04-12 00:00:00');
 
 INSERT INTO `inquiry_amenities` (`inquiry_id`, `amenity_id`) VALUES
 (1, 3),
