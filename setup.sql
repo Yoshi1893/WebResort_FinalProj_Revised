@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `first_name` varchar(100) NOT NULL,
   `last_name` varchar(100) NOT NULL,
+  `username` varchar(50) NOT NULL UNIQUE,
   `email` varchar(150) NOT NULL UNIQUE,
   `phone` varchar(20) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
@@ -51,8 +52,8 @@ EXECUTE venue_capacity_stmt;
 DEALLOCATE PREPARE venue_capacity_stmt;
 
 -- Sample data
-INSERT INTO `users` (`first_name`, `last_name`, `email`, `phone`, `password`, `role`, `status`) VALUES
-('Test', 'User', 'test@example.com', '+639171234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'customer', 'active'); -- password: password
+INSERT INTO `users` (`first_name`, `last_name`, `username`, `email`, `phone`, `password`, `role`, `status`) VALUES
+('Test', 'User', 'testuser', 'test@example.com', '+639171234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'customer', 'active'); -- password: password
 
 INSERT INTO `inquiries` (`full_name`, `email`, `event_type`, `event_date`, `message`) VALUES 
 ('Sample Client', 'sample@9waves.com', 'Wedding', '2024-12-15', 'Sample wedding inquiry for 150 guests.');

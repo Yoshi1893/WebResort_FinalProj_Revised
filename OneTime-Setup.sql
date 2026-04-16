@@ -21,6 +21,7 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `first_name` varchar(100) NOT NULL,
   `last_name` varchar(100) NOT NULL,
+  `username` varchar(50) NOT NULL,
   `email` varchar(150) NOT NULL,
   `phone` varchar(30) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
@@ -30,6 +31,7 @@ CREATE TABLE `users` (
   `status` enum('active','revoked','deleted') NOT NULL DEFAULT 'active',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_users_username` (`username`),
   UNIQUE KEY `uq_users_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -134,9 +136,9 @@ CREATE TABLE `access_log` (
   CONSTRAINT `fk_access_log_actioned_by` FOREIGN KEY (`actioned_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `users` (`id`, `first_name`, `last_name`, `email`, `phone`, `password`, `role`, `profile_image`, `archived`, `status`, `created_at`) VALUES
-(1, 'Admin', 'User', 'admin@9waves.com', '+63 917 111 0000', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, 0, 'active', '2026-04-01 00:00:00'),
-(2, 'Test', 'User', 'test@example.com', '+639171234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'customer', NULL, 0, 'active', '2026-04-08 00:00:00');
+INSERT INTO `users` (`id`, `first_name`, `last_name`, `username`, `email`, `phone`, `password`, `role`, `profile_image`, `archived`, `status`, `created_at`) VALUES
+(1, 'Admin', 'User', 'admin', 'admin@9waves.com', '+63 917 111 0000', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, 0, 'active', '2026-04-01 00:00:00'),
+(2, 'Test', 'User', 'testuser', 'test@example.com', '+639171234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'customer', NULL, 0, 'active', '2026-04-08 00:00:00');
 
 INSERT INTO `packages` (`id`, `package_key`, `name`, `base_price`, `guest_capacity`, `tagline`, `active`, `max_private_rooms`) VALUES
 (1, 'ripple', 'Ripple Pack', 45000.00, 100, 'Best for intimate celebrations', 1, 2),
