@@ -98,7 +98,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="wizGuests">Estimated Guest Count</label>
-              <input type="text" id="wizGuests" inputmode="numeric" pattern="[0-9]*" placeholder="Minimum 50 guests">
+              <input type="text" id="wizGuests" inputmode="numeric" pattern="[0-9]*" placeholder="Minimum 50 guests" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
               <div id="wizGuestError" class="validation-msg" style="display:none; color:var(--red); font-size:11px; margin-top:8px;"></div>
             </div>
             <div class="form-group">

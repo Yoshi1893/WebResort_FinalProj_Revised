@@ -636,8 +636,15 @@
     updateGuestLimits();
   }
 
+  function sanitizeWizardGuestInput() {
+    const guestInput = $('wizGuests');
+    if (!guestInput) return;
+    guestInput.value = String(guestInput.value || '').replace(/\D+/g, '');
+  }
+
   function syncEstimatorFromWizard() {
     if (isSyncingEstimate) return;
+    sanitizeWizardGuestInput();
     isSyncingEstimate = true;
     $('estPackage').value = $('wizPackage').value;
     $('estGuests').value = $('wizGuests').value;
@@ -965,7 +972,10 @@
     $('estPackage').onchange = updateCalculator;
     $('estGuests').oninput = updateCalculator;
     $('wizPackage').onchange = syncEstimatorFromWizard;
-    $('wizGuests').oninput = syncEstimatorFromWizard;
+    $('wizGuests').oninput = () => {
+      sanitizeWizardGuestInput();
+      syncEstimatorFromWizard();
+    };
     bindAddonSyncListeners();
     $('wizNext').onclick = () => goToStep(currentStep + 1);
     $('wizPrev').onclick = () => goToStep(currentStep - 1);
