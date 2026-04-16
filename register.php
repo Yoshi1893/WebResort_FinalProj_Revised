@@ -68,8 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
         <section class="auth-shell-card auth-shell-card-wide">
             <div class="auth-shell-copyblock">
                 <div class="auth-shell-eyebrow">Create Account</div>
-                <h1 class="auth-shell-title">Set up your <em>customer profile</em></h1>
-                <p class="auth-shell-copy">This frontend pass keeps registration as a real PHP form, while matching the newer account and admin interfaces visually.</p>
+                <h1 class="auth-shell-title">Set up your <em> profile</em></h1>
+                <!-- <p class="auth-shell-copy">This frontend pass keeps registration as a real PHP form, while matching the newer account and admin interfaces visually.</p> -->
             </div>
 
             <?php if ($error): ?>
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
 
             <div class="auth-shell-links">
                 <p>Already have an account? <a href="login.php">Login here</a>.</p>
-                <p>The future backend can later add redirect rules and role-aware routing on top of this UI.</p>
+                <!-- <p>The future backend can later add redirect rules and role-aware routing on top of this UI.</p> -->
             </div>
         </section>
     </main>

@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
             <div class="auth-shell-copyblock">
                 <div class="auth-shell-eyebrow">Welcome Back</div>
                 <h1 class="auth-shell-title">Sign in to your <em>9 Waves</em> account</h1>
-                <p class="auth-shell-copy">This page is now aligned with the new frontend pages. The form still uses the existing PHP login flow, but it degrades gracefully if the database is offline.</p>
+                <!-- <p class="auth-shell-copy">This page is now aligned with the new frontend pages. The form still uses the existing PHP login flow, but it degrades gracefully if the database is offline.</p> -->
             </div>
 
             <?php if ($access_notice): ?>

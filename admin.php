@@ -31,7 +31,7 @@ if ($pdo) checkAdminAccess($pdo);
   <main class="admin-body">
     <section class="panel-welcome">
       <h2>Admin <em>Workspace</em></h2>
-      <p>Manage frontend-ready package pricing, amenities, users, and inquiry logs from one page.</p>
+      <!-- <p>Manage frontend-ready package pricing, amenities, users, and inquiry logs from one page.</p> -->
     </section>
 
     <section class="admin-stats-row">
@@ -44,7 +44,7 @@ if ($pdo) checkAdminAccess($pdo);
     <section class="admin-management-grid">
       <article class="cust-card admin-manage-card">
         <div class="cust-card-title">Packages</div>
-        <div class="cust-card-sub">Edit existing package pricing, guest limits, and room allowance</div>
+        <!-- <div class="cust-card-sub">Edit existing package pricing, guest limits, and room allowance</div> -->
         <div class="admin-edit-note">Click <strong>Edit</strong> on a package row to load it into this form.</div>
         <form class="admin-form" id="packageForm">
           <input type="hidden" id="packageId">
@@ -72,7 +72,7 @@ if ($pdo) checkAdminAccess($pdo);
 
       <article class="cust-card admin-manage-card">
         <div class="cust-card-title">Amenities</div>
-        <div class="cust-card-sub">Edit existing add-on pricing shown to customers</div>
+        <!-- <div class="cust-card-sub">Edit existing add-on pricing shown to customers</div> -->
         <div class="admin-edit-note">Click <strong>Edit</strong> on an amenity row to load it into this form.</div>
         <form class="admin-form" id="amenityForm">
           <input type="hidden" id="amenityId">
@@ -97,7 +97,7 @@ if ($pdo) checkAdminAccess($pdo);
     <section class="admin-management-grid">
       <article class="cust-card admin-manage-card">
         <div class="cust-card-title">Venues</div>
-        <div class="cust-card-sub">Edit existing venue details used in inquiry mapping</div>
+        <!-- <div class="cust-card-sub">Edit existing venue details used in inquiry mapping</div> -->
         <div class="admin-edit-note">Click <strong>Edit</strong> on a venue row to load it into this form.</div>
         <form class="admin-form" id="venueForm">
           <input type="hidden" id="venueId">

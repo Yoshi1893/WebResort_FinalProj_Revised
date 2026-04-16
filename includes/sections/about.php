@@ -12,7 +12,7 @@
     </div>
   </div>
   <div class="about-visual reveal">
-    <div class="about-img-main" style="background:url('https://images.unsplash.com/photo-1519167758481-83f550bb49b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80') center/cover;">
+    <div class="about-img-main" style="background:url('image/gardenWedding.jpg') center/cover;">
       <div class="garden-illustration"></div>
     </div>
     <div class="about-img-accent">Where 9 waves of joy carry your celebration to shore</div>
