@@ -745,13 +745,13 @@ function profileInitials(array $user): string
       </div>
     </section>
 
-    <!-- DELETE ACCOUNT -->
+    <!-- DEACTIVATE ACCOUNT -->
     <section class="cust-cta-card account-archive-card">
-      <h3>Delete This <em>Account</em></h3>
+      <h3>Deactivate This <em>Account</em></h3>
       <p>Deleting your account removes your access immediately. Your inquiries remain preserved for our records.</p>
       <div class="account-archive-actions">
         <button class="panel-btn panel-btn-outline-white" id="deleteAccountBtn" type="button">
-          Delete My Account
+          Deactivate My Account
         </button>
       </div>
     </section>
@@ -760,16 +760,16 @@ function profileInitials(array $user): string
   <div class="toast" id="toast"></div>
 
   <script>
-    // Delete account — calls backend
+    // Deactivate account — calls backend
     document.getElementById('deleteAccountBtn').addEventListener('click', () => {
-      if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
-      fetch('actions/delete_account.php', {
+      if (!confirm('Are you sure you want to deactivate your account? You will lose access immediately.')) return;
+      fetch('assets/actions/delete_account.php', {
           method: 'POST'
         })
         .then(res => res.json())
         .then(data => {
           if (data.success) window.location.href = data.redirect;
-          else alert(data.message || 'Failed to delete account.');
+          else alert(data.message || 'Failed to deactivate account.');
         })
         .catch(() => alert('Could not reach the server. Please try again.'));
     });

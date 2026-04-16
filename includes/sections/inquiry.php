@@ -128,6 +128,7 @@
             <div class="form-group"><label for="wizPreferredDate">Preferred Date</label><input type="text" id="wizPreferredDate" placeholder="Select your first-choice date" readonly></div>
             <div class="form-group"><label for="wizBackupDate">Backup Date</label><input type="text" id="wizBackupDate" placeholder="Select your backup date" readonly></div>
           </div>
+          <p class="wizard-date-note">Reserved dates are disabled. Your backup date must be later than your preferred date.</p>
           <div class="form-group"><label for="wizNotes">Anything the team should know?</label><textarea id="wizNotes" rows="4" placeholder="Tell us about your preferred flow, style, or non-negotiables."></textarea></div>
         </div>
 

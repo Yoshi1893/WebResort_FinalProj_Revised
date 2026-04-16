@@ -2415,6 +2415,14 @@ footer {
   margin-bottom: 8px;
   text-align: left;
 }
+
+.wizard-date-note {
+  margin: 10px 0 18px;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--text-light);
+}
+
 .wizard-step .form-group input, 
 .wizard-step .form-group textarea,
 .wizard-select,

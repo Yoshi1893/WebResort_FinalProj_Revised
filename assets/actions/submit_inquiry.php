@@ -59,6 +59,27 @@ if (is_array($rawAddOns)) {
 }
 $addOns = array_values(array_unique($addOns));
 
+$isIsoDate = static function (string $value): bool {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) return false;
+    [$y, $m, $d] = array_map('intval', explode('-', $value));
+    return checkdate($m, $d, $y);
+};
+
+if ($preferredDate === '' || !$isIsoDate($preferredDate)) {
+    echo json_encode(['success' => false, 'message' => 'Please select a valid preferred date.']);
+    exit;
+}
+
+if ($backupDate === '' || !$isIsoDate($backupDate)) {
+    echo json_encode(['success' => false, 'message' => 'Please select a valid backup date.']);
+    exit;
+}
+
+if ($backupDate <= $preferredDate) {
+    echo json_encode(['success' => false, 'message' => 'Backup date must be after your preferred date.']);
+    exit;
+}
+
 $stmt = $pdo->prepare('SELECT first_name, last_name, email, phone FROM users WHERE id = ? LIMIT 1');
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
@@ -310,6 +331,25 @@ if (empty($insertFields)) {
 
 try {
     $pdo->beginTransaction();
+
+    // Enforce one inquiry per preferred date.
+    if ($has('preferred_date')) {
+        $checkStmt = $pdo->prepare('SELECT id FROM inquiries WHERE DATE(preferred_date) = DATE(?) LIMIT 1 FOR UPDATE');
+        $checkStmt->execute([$preferredDate]);
+        if ($checkStmt->fetchColumn()) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Selected preferred date is no longer available. Please choose another date.']);
+            exit;
+        }
+    } elseif ($has('event_date')) {
+        $checkStmt = $pdo->prepare('SELECT id FROM inquiries WHERE DATE(event_date) = DATE(?) LIMIT 1 FOR UPDATE');
+        $checkStmt->execute([$preferredDate]);
+        if ($checkStmt->fetchColumn()) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Selected preferred date is no longer available. Please choose another date.']);
+            exit;
+        }
+    }
 
     $sql = 'INSERT INTO inquiries (' . implode(', ', $insertFields) . ') VALUES (' . implode(', ', $insertValues) . ')';
     $stmt = $pdo->prepare($sql);

@@ -9,6 +9,13 @@ if (!$pdo) {
 }
 
 try {
+    $inquiryCols = [];
+    $inqColStmt = $pdo->query('SHOW COLUMNS FROM inquiries');
+    foreach ($inqColStmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
+        $inquiryCols[] = strtolower((string) ($col['Field'] ?? ''));
+    }
+    $inqHas = fn(string $name): bool => in_array(strtolower($name), $inquiryCols, true);
+
     $packageCols = [];
     $pkgColStmt = $pdo->query('SHOW COLUMNS FROM packages');
     foreach ($pkgColStmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
@@ -107,12 +114,29 @@ try {
         ];
     }, $venues);
 
+    $unavailablePreferredDates = [];
+    if ($inqHas('preferred_date')) {
+        $rows = $pdo->query("SELECT DISTINCT DATE(preferred_date) AS reserved_date FROM inquiries WHERE preferred_date IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            $value = trim((string) ($row['reserved_date'] ?? ''));
+            if ($value !== '') $unavailablePreferredDates[] = $value;
+        }
+    } elseif ($inqHas('event_date')) {
+        $rows = $pdo->query("SELECT DISTINCT DATE(event_date) AS reserved_date FROM inquiries WHERE event_date IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            $value = trim((string) ($row['reserved_date'] ?? ''));
+            if ($value !== '') $unavailablePreferredDates[] = $value;
+        }
+    }
+    $unavailablePreferredDates = array_values(array_unique($unavailablePreferredDates));
+
     echo json_encode([
         'success' => true,
         'packages' => $normalizedPackages,
         'amenities' => $normalizedAmenities,
         'venues' => $normalizedVenues,
         'packageData' => $packageData,
+        'unavailablePreferredDates' => $unavailablePreferredDates,
     ]);
 } catch (Throwable $e) {
     echo json_encode(['success' => false, 'message' => 'Failed to load catalog: ' . $e->getMessage()]);

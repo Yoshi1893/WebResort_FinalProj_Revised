@@ -3,6 +3,9 @@
   let PACKAGE_DATA = window.MockStore?.getPackageData() || {};
   let PACKAGE_ID_BY_KEY = {};
   let VENUE_ID_BY_NAME = {};
+  let UNAVAILABLE_PREFERRED_DATES = [];
+  let preferredDatePicker = null;
+  let backupDatePicker = null;
   const SESSION_USER = window.AppSessionUser || null;
   let currentStep = 1;
   let isSyncingEstimate = false;
@@ -371,6 +374,9 @@
     const packages = Array.isArray(catalog?.packages) ? catalog.packages : [];
     const amenities = Array.isArray(catalog?.amenities) ? catalog.amenities : [];
     const venues = Array.isArray(catalog?.venues) ? catalog.venues : [];
+    UNAVAILABLE_PREFERRED_DATES = Array.isArray(catalog?.unavailablePreferredDates)
+      ? catalog.unavailablePreferredDates.filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim()))
+      : [];
 
     PACKAGE_ID_BY_KEY = {};
     packages.forEach((pkg) => {
@@ -449,6 +455,7 @@
     renderVenueUI(venues);
     renderExplorerFromVenues(venues);
     bindWizardVenueListeners();
+    applyDateAvailabilityRules();
   }
 
   async function loadCatalogFromDb() {
@@ -709,6 +716,10 @@
         showToast('Preferred and backup dates must be different.', '#c0392b');
         return false;
       }
+      if (backup < preferred) {
+        showToast('Backup date must be after the preferred date.', '#c0392b');
+        return false;
+      }
     }
     return true;
   }
@@ -807,8 +818,55 @@
 
   function initDatePickers() {
     if (!window.flatpickr) return;
-    flatpickr('#wizPreferredDate', { minDate: 'today', dateFormat: 'Y-m-d', altInput: true, altFormat: 'F j, Y', disableMobile: true });
-    flatpickr('#wizBackupDate', { minDate: 'today', dateFormat: 'Y-m-d', altInput: true, altFormat: 'F j, Y', disableMobile: true });
+    preferredDatePicker = flatpickr('#wizPreferredDate', {
+      minDate: 'today',
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'F j, Y',
+      disableMobile: true,
+      onChange: (selectedDates, dateStr) => {
+        if (!backupDatePicker) return;
+        const nextMin = dateStr || 'today';
+        backupDatePicker.set('minDate', nextMin);
+        const backupValue = $('wizBackupDate').value;
+        if (backupValue && backupValue <= dateStr) {
+          backupDatePicker.clear();
+          showToast('Please pick a backup date after your preferred date.', '#c0392b');
+        }
+        applyDateAvailabilityRules();
+      }
+    });
+    backupDatePicker = flatpickr('#wizBackupDate', {
+      minDate: 'today',
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'F j, Y',
+      disableMobile: true,
+      onClose: () => {
+        const preferred = $('wizPreferredDate').value;
+        const backup = $('wizBackupDate').value;
+        if (preferred && backup && backup <= preferred) {
+          backupDatePicker.clear();
+          showToast('Backup date must be after your preferred date.', '#c0392b');
+        }
+      }
+    });
+    applyDateAvailabilityRules();
+  }
+
+  function applyDateAvailabilityRules() {
+    const unavailable = Array.from(new Set(UNAVAILABLE_PREFERRED_DATES));
+    const preferred = $('wizPreferredDate')?.value || '';
+
+    if (preferredDatePicker) {
+      preferredDatePicker.set('disable', unavailable);
+    }
+
+    if (backupDatePicker) {
+      const backupDisabled = preferred ? unavailable.filter((date) => date !== preferred) : unavailable;
+      backupDatePicker.set('disable', backupDisabled);
+      backupDatePicker.set('minDate', preferred || 'today');
+    }
   }
 
   function switchExplorerView(view) {

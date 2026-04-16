@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
                 <!-- <p class="auth-shell-copy">This page is now aligned with the new frontend pages. The form still uses the existing PHP login flow, but it degrades gracefully if the database is offline.</p> -->
             </div>
 
-            <?php if ($access_notice): ?>
+            <?php if ($access_notice && !$error): ?>
                 <div class="auth-feedback auth-feedback-error"><?php echo htmlspecialchars($access_notice); ?></div>
             <?php endif; ?>
             <?php if ($error): ?>
